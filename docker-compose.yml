@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  # Spatial PostgreSQL Database with PostGIS
+  db:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: geofence-postgis-db
+    restart: always
+    environment:
+      POSTGRES_DB: geofencing_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgis_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d geofencing_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Go Backend Microservice
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: geofence-backend-api
+    restart: always
+    environment:
+      PORT: "8080"
+      DATABASE_URL: "postgres://postgres:postgrespassword@db:5432/geofencing_db?sslmode=disable"
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # React Frontend Dashboard
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: geofence-frontend-ui
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgis_data:
+

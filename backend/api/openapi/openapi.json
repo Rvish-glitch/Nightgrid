@@ -1,0 +1,590 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Geofencing & Real-Time Alert System API",
+    "description": "Production REST API for geofencing, vehicle tracking, alert configuration, and real-time spatial violations. Complies with MapUp Full-Stack Developer Assessment specifications.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Local Development Server"
+    }
+  ],
+  "paths": {
+    "/geofences": {
+      "post": {
+        "summary": "Create a new geofence",
+        "description": "Creates a virtual polygonal boundary for geofencing with category and coordinates.",
+        "tags": ["Geofences"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGeofenceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Geofence created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateGeofenceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Retrieve all geofences",
+        "description": "Fetches all saved geofences, with optional filtering by category.",
+        "tags": ["Geofences"],
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "description": "Filter by geofence category",
+            "schema": {
+              "type": "string",
+              "enum": ["delivery_zone", "restricted_zone", "toll_zone", "customer_area"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of geofences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeofencesListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/vehicles": {
+      "post": {
+        "summary": "Register a new vehicle",
+        "description": "Registers a new tracking target vehicle with driver and vehicle information.",
+        "tags": ["Vehicles"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateVehicleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Vehicle registered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateVehicleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Retrieve all registered vehicles",
+        "description": "Returns list of all active vehicles in the system.",
+        "tags": ["Vehicles"],
+        "responses": {
+          "200": {
+            "description": "List of vehicles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehiclesListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/vehicles/location": {
+      "post": {
+        "summary": "Update vehicle location",
+        "description": "Updates GPS location, executes PostGIS point-in-polygon evaluation, detects entry/exit transitions, and asynchronously triggers real-time alerts.",
+        "tags": ["Location Tracking"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLocationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Location processed and geofences evaluated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateLocationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid coordinates or vehicle ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/vehicles/location/{vehicle_id}": {
+      "get": {
+        "summary": "Get vehicle location and geofence residency",
+        "description": "Fetches current GPS point and all currently enclosing geofences for a single vehicle.",
+        "tags": ["Location Tracking"],
+        "parameters": [
+          {
+            "name": "vehicle_id",
+            "in": "path",
+            "required": true,
+            "description": "Unique vehicle ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Vehicle location status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehicleLocationStatusResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Vehicle not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/alerts/configure": {
+      "post": {
+        "summary": "Configure geofence alert rule",
+        "description": "Creates an automated alert rule for entry, exit, or both events on a specific geofence.",
+        "tags": ["Alert Rules"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigureAlertRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Alert rule configured successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigureAlertResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/alerts": {
+      "get": {
+        "summary": "Retrieve all alert rules",
+        "description": "Fetches configured alert rules, with optional filters for geofence and vehicle.",
+        "tags": ["Alert Rules"],
+        "parameters": [
+          {
+            "name": "geofence_id",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "vehicle_id",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of configured alerts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertsListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/violations/history": {
+      "get": {
+        "summary": "Retrieve historical geofence entry/exit violations",
+        "description": "Fetches violation logs with support for vehicle, geofence, and ISO 8601 date range filtering.",
+        "tags": ["Violations History"],
+        "parameters": [
+          {
+            "name": "vehicle_id",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "geofence_id",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date-time" }
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date-time" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 50, "maximum": 500 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Filtered violation records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViolationsHistoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ws/alerts": {
+      "get": {
+        "summary": "WebSocket Real-Time Alert Stream",
+        "description": "Upgrades HTTP connection to full-duplex WebSocket stream. Connected clients receive instant JSON alerts when restricted zone entry/exit violations trigger.",
+        "tags": ["Real-Time Notifications"],
+        "responses": {
+          "101": {
+            "description": "Switching Protocols to WebSocket"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateGeofenceRequest": {
+        "type": "object",
+        "required": ["name", "coordinates", "category"],
+        "properties": {
+          "name": { "type": "string", "example": "Downtown Delivery Zone" },
+          "description": { "type": "string", "example": "Main delivery area for downtown customers" },
+          "coordinates": {
+            "type": "array",
+            "description": "Closed polygon coordinate ring [latitude, longitude]. First and last coordinates must be identical.",
+            "items": {
+              "type": "array",
+              "items": { "type": "number" },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "example": [
+              [37.7749, -122.4194],
+              [37.7849, -122.4194],
+              [37.7849, -122.4094],
+              [37.7749, -122.4094],
+              [37.7749, -122.4194]
+            ]
+          },
+          "category": {
+            "type": "string",
+            "enum": ["delivery_zone", "restricted_zone", "toll_zone", "customer_area"],
+            "example": "delivery_zone"
+          }
+        }
+      },
+      "CreateGeofenceResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "geo_123" },
+          "name": { "type": "string", "example": "Downtown Delivery Zone" },
+          "status": { "type": "string", "example": "active" },
+          "time_ns": { "type": "string", "example": "1234567" }
+        }
+      },
+      "GeofencesListResponse": {
+        "type": "object",
+        "properties": {
+          "geofences": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string", "example": "geo_123" },
+                "name": { "type": "string", "example": "Downtown Delivery Zone" },
+                "description": { "type": "string", "example": "Main delivery area" },
+                "coordinates": {
+                  "type": "array",
+                  "items": { "type": "array", "items": { "type": "number" } }
+                },
+                "category": { "type": "string", "example": "delivery_zone" },
+                "created_at": { "type": "string", "example": "2025-01-15T10:30:00Z" }
+              }
+            }
+          },
+          "time_ns": { "type": "string", "example": "987654" }
+        }
+      },
+      "CreateVehicleRequest": {
+        "type": "object",
+        "required": ["vehicle_number", "driver_name", "vehicle_type", "phone"],
+        "properties": {
+          "vehicle_number": { "type": "string", "example": "KA-01-AB-1234" },
+          "driver_name": { "type": "string", "example": "John Doe" },
+          "vehicle_type": { "type": "string", "example": "truck" },
+          "phone": { "type": "string", "example": "+1234567890" }
+        }
+      },
+      "CreateVehicleResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "veh_456" },
+          "vehicle_number": { "type": "string", "example": "KA-01-AB-1234" },
+          "status": { "type": "string", "example": "active" },
+          "time_ns": { "type": "string", "example": "1123456" }
+        }
+      },
+      "VehiclesListResponse": {
+        "type": "object",
+        "properties": {
+          "vehicles": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string", "example": "veh_456" },
+                "vehicle_number": { "type": "string", "example": "KA-01-AB-1234" },
+                "driver_name": { "type": "string", "example": "John Doe" },
+                "vehicle_type": { "type": "string", "example": "truck" },
+                "phone": { "type": "string", "example": "+1234567890" },
+                "status": { "type": "string", "example": "active" },
+                "created_at": { "type": "string", "example": "2025-01-15T09:00:00Z" }
+              }
+            }
+          },
+          "time_ns": { "type": "string", "example": "876543" }
+        }
+      },
+      "UpdateLocationRequest": {
+        "type": "object",
+        "required": ["vehicle_id", "latitude", "longitude", "timestamp"],
+        "properties": {
+          "vehicle_id": { "type": "string", "example": "veh_456" },
+          "latitude": { "type": "number", "minimum": -90, "maximum": 90, "example": 37.7849 },
+          "longitude": { "type": "number", "minimum": -180, "maximum": 180, "example": -122.4194 },
+          "timestamp": { "type": "string", "format": "date-time", "example": "2025-01-15T10:35:00Z" }
+        }
+      },
+      "UpdateLocationResponse": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": { "type": "string", "example": "veh_456" },
+          "location_updated": { "type": "boolean", "example": true },
+          "current_geofences": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "geofence_id": { "type": "string", "example": "geo_123" },
+                "geofence_name": { "type": "string", "example": "Downtown Delivery Zone" },
+                "status": { "type": "string", "example": "inside" }
+              }
+            }
+          },
+          "time_ns": { "type": "string", "example": "2345678" }
+        }
+      },
+      "VehicleLocationStatusResponse": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": { "type": "string", "example": "veh_456" },
+          "vehicle_number": { "type": "string", "example": "KA-01-AB-1234" },
+          "current_location": {
+            "type": "object",
+            "properties": {
+              "latitude": { "type": "number", "example": 37.7849 },
+              "longitude": { "type": "number", "example": -122.4194 },
+              "timestamp": { "type": "string", "example": "2025-01-15T10:35:00Z" }
+            }
+          },
+          "current_geofences": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "geofence_id": { "type": "string", "example": "geo_123" },
+                "geofence_name": { "type": "string", "example": "Downtown Delivery Zone" },
+                "category": { "type": "string", "example": "delivery_zone" }
+              }
+            }
+          },
+          "time_ns": { "type": "string", "example": "876543" }
+        }
+      },
+      "ConfigureAlertRequest": {
+        "type": "object",
+        "required": ["geofence_id", "event_type"],
+        "properties": {
+          "geofence_id": { "type": "string", "example": "geo_123" },
+          "vehicle_id": { "type": "string", "nullable": true, "example": "veh_456" },
+          "event_type": { "type": "string", "enum": ["entry", "exit", "both"], "example": "entry" }
+        }
+      },
+      "ConfigureAlertResponse": {
+        "type": "object",
+        "properties": {
+          "alert_id": { "type": "string", "example": "alert_789" },
+          "geofence_id": { "type": "string", "example": "geo_123" },
+          "vehicle_id": { "type": "string", "example": "veh_456" },
+          "event_type": { "type": "string", "example": "entry" },
+          "status": { "type": "string", "example": "active" },
+          "time_ns": { "type": "string", "example": "1567890" }
+        }
+      },
+      "AlertsListResponse": {
+        "type": "object",
+        "properties": {
+          "alerts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "alert_id": { "type": "string", "example": "alert_789" },
+                "geofence_id": { "type": "string", "example": "geo_123" },
+                "geofence_name": { "type": "string", "example": "Downtown Delivery Zone" },
+                "vehicle_id": { "type": "string", "example": "veh_456" },
+                "vehicle_number": { "type": "string", "example": "KA-01-AB-1234" },
+                "event_type": { "type": "string", "example": "entry" },
+                "status": { "type": "string", "example": "active" },
+                "created_at": { "type": "string", "example": "2025-01-15T09:15:00Z" }
+              }
+            }
+          },
+          "time_ns": { "type": "string", "example": "654321" }
+        }
+      },
+      "ViolationsHistoryResponse": {
+        "type": "object",
+        "properties": {
+          "violations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string", "example": "viol_111" },
+                "vehicle_id": { "type": "string", "example": "veh_456" },
+                "vehicle_number": { "type": "string", "example": "KA-01-AB-1234" },
+                "geofence_id": { "type": "string", "example": "geo_123" },
+                "geofence_name": { "type": "string", "example": "Downtown Delivery Zone" },
+                "event_type": { "type": "string", "example": "entry" },
+                "latitude": { "type": "number", "example": 37.7849 },
+                "longitude": { "type": "number", "example": -122.4194 },
+                "timestamp": { "type": "string", "example": "2025-01-15T10:35:00Z" }
+              }
+            }
+          },
+          "total_count": { "type": "integer", "example": 245 },
+          "time_ns": { "type": "string", "example": "3456789" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string", "example": "Validation failed" },
+          "time_ns": { "type": "string", "example": "123456" }
+        }
+      }
+    }
+  }
+}
+
