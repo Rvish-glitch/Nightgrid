@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Bell, Plus, PenTool } from 'lucide-react';
+import { Search, Bell, MapPin, PenTool } from 'lucide-react';
 
 interface TopHeaderProps {
   wsConnected: boolean;
   alertCount: number;
   onOpenAlerts: () => void;
-  onOpenNewGeofence: () => void;
   onOpenNewVehicle: () => void;
   isDrawing: boolean;
   onToggleDrawing: () => void;
@@ -16,7 +15,6 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   wsConnected,
   alertCount,
   onOpenAlerts,
-  onOpenNewGeofence,
   onOpenNewVehicle,
   isDrawing,
   onToggleDrawing,
@@ -55,40 +53,30 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         </div>
       </div>
 
-      {/* Right: Explicitly Named Action Buttons */}
+      {/* Right: Actions, UTC Clock, Search, Notification Bell */}
       <div className="flex items-center gap-2.5 font-mono text-xs">
         {/* Draw Geofence Polygon */}
         <button
           onClick={onToggleDrawing}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs transition border ${
+          className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs transition border font-semibold ${
             isDrawing
               ? 'bg-amber-600 border-amber-400 text-white animate-pulse'
               : 'bg-[#0b1120] border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
           }`}
-          title="Click points on map to create custom boundary"
+          title="Click points on map to draw custom geofence boundary"
         >
           <PenTool className="w-3.5 h-3.5" />
-          <span>{isDrawing ? `FINISH (${drawingPointCount} PTS)` : 'Draw Geofence'}</span>
+          <span>{isDrawing ? `Finish (${drawingPointCount} pts)` : 'Draw Geofence'}</span>
         </button>
 
-        {/* Create Geofence Button */}
-        <button
-          onClick={onOpenNewGeofence}
-          className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#091624] hover:bg-[#0e2238] border border-cyan-900/60 text-cyan-300 transition font-semibold"
-          title="Create New Geofence"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Geofence</span>
-        </button>
-
-        {/* Create Vehicle Button */}
+        {/* Place New Vehicle Button (asks for starting position) */}
         <button
           onClick={onOpenNewVehicle}
-          className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#0b1120] hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition font-semibold"
-          title="Register New Vehicle"
+          className="flex items-center gap-1.5 px-3 py-1 rounded bg-[#091624] hover:bg-[#0e2238] border border-cyan-900/60 text-cyan-300 hover:text-white transition font-semibold"
+          title="Register and place new vehicle on map with starting coordinates"
         >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Vehicle</span>
+          <MapPin className="w-3.5 h-3.5" />
+          <span>Place New Vehicle</span>
         </button>
 
         {/* Real-time UTC Clock */}
@@ -96,7 +84,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           {utcTime || '00:00:00 UTC'}
         </div>
 
-        {/* Search focus */}
+        {/* Search quick button */}
         <button
           onClick={() => {
             const input = document.getElementById('geofence-search-input');

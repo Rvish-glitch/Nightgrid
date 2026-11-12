@@ -117,7 +117,6 @@ export const App: React.FC = () => {
         wsConnected={isConnected}
         alertCount={wsAlerts.length}
         onOpenAlerts={() => setActiveNavTab('alerts')}
-        onOpenNewGeofence={() => setIsGeofenceModalOpen(true)}
         onOpenNewVehicle={() => setIsVehicleModalOpen(true)}
         isDrawing={isDrawing}
         onToggleDrawing={() => {
@@ -270,7 +269,18 @@ export const App: React.FC = () => {
       <VehicleModal
         isOpen={isVehicleModalOpen}
         onClose={() => setIsVehicleModalOpen(false)}
-        onSuccess={loadData}
+        onSuccess={async (newId?: string) => {
+          await loadData();
+          if (newId) {
+            try {
+              const res = await getVehicles();
+              const placed = (res.vehicles || []).find((v) => v.id === newId);
+              if (placed) setSelectedVehicle(placed);
+            } catch (err) {
+              console.error('Failed to select newly placed vehicle:', err);
+            }
+          }
+        }}
       />
 
       <AlertConfigModal
