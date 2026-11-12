@@ -13,26 +13,32 @@ export const BottomBar: React.FC<BottomBarProps> = ({
 }) => {
   return (
     <footer className="h-7 bg-[#060a12] border-t border-slate-800/80 px-4 flex items-center justify-between text-[11px] font-mono text-slate-500 z-30 select-none">
-      {/* Left Links matching Screenshot */}
+      {/* Left Links */}
       <div className="flex items-center gap-4">
-        <span className="text-cyan-400 font-semibold cursor-pointer">Live Map</span>
-        <span onClick={onOpenVehicles} className="hover:text-slate-300 cursor-pointer transition">
+        <span className="text-cyan-400 font-semibold cursor-pointer">Map</span>
+        <span onClick={onOpenVehicles} className="hover:text-cyan-300 cursor-pointer transition font-medium">
           Vehicles
         </span>
-        <span onClick={onOpenGeofences} className="hover:text-slate-300 cursor-pointer transition">
-          Drivers
+        <span onClick={onOpenGeofences} className="hover:text-cyan-300 cursor-pointer transition font-medium">
+          Geofences
         </span>
-        <span onClick={onOpenAlerts} className="hover:text-slate-300 cursor-pointer transition">
+        <span onClick={onOpenAlerts} className="hover:text-cyan-300 cursor-pointer transition font-medium">
           Alerts
         </span>
       </div>
 
-      {/* Right Meta matching Screenshot */}
+      {/* Right Meta */}
       <div className="flex items-center gap-4 text-slate-500">
-        <span className="text-slate-400 font-bold">GRID v2.4.1</span>
-        <span className="hover:text-slate-300 cursor-pointer transition">Sign in</span>
-        <span className="hover:text-slate-300 cursor-pointer transition">Create account</span>
-        <span className="hover:text-slate-300 cursor-pointer transition">Recovery</span>
+        <a
+          href="http://localhost:8080/swagger"
+          target="_blank"
+          rel="noreferrer"
+          className="text-cyan-500/80 hover:text-cyan-400 cursor-pointer transition font-bold"
+        >
+          API Docs (/swagger)
+        </a>
+        <span className="text-slate-600">|</span>
+        <span className="text-slate-400 font-bold">NIGHTGRID v2.4.1</span>
       </div>
     </footer>
   );

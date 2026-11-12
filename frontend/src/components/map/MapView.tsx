@@ -2,14 +2,13 @@ import React, { useState } from 'react';
 import {
   MapContainer,
   TileLayer,
-  Polyline,
   Circle,
   CircleMarker,
   Tooltip,
   useMapEvents,
 } from 'react-leaflet';
 import { Geofence, Vehicle, categoryColors } from '../../types';
-import { ShieldAlert, Globe, Layers, Moon, Search, Navigation, Building2 } from 'lucide-react';
+import { ShieldAlert, Globe, Layers, Moon, Search, Navigation } from 'lucide-react';
 
 export type MapMode = 'dark' | 'satellite' | 'streets';
 
@@ -106,11 +105,6 @@ const mapTiles: Record<MapMode, { url: string; attribution: string; maxZoom: num
   },
 };
 
-// Depots for tactical map aesthetic matching screenshot
-const tacticalDepots = [
-  { id: 'depot-4', name: 'DEPOT 4', lat: 37.7820, lng: -122.4080 },
-];
-
 export const MapView: React.FC<MapViewProps> = ({
   geofences,
   vehicles,
@@ -123,11 +117,11 @@ export const MapView: React.FC<MapViewProps> = ({
 }) => {
   const [mapMode, setMapMode] = useState<MapMode>('dark');
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<'ALL' | 'MOVING' | 'IDLE' | 'OFFLINE'>('ALL');
+  const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
 
   const defaultCenter: [number, number] = [37.7830, -122.4110];
 
-  // Filter vehicles based on search and filter type
+  // Filter vehicles by search query
   const filteredVehicles = vehicles.filter((v) => {
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -138,71 +132,56 @@ export const MapView: React.FC<MapViewProps> = ({
     return true;
   });
 
-  // Calculate fleet status counts
-  const movingCount = vehicles.length > 0 ? 3 : 0;
-  const idleCount = 2;
-  const parkedCount = 2;
-  const offlineCount = 1;
-
-  // Connecting route paths across units for tactical look
-  const tacticalRoutes: [number, number][][] = [
-    [
-      [37.7940, -122.4350],
-      [37.7830, -122.4110], // NG-104
-      [37.7890, -122.3960], // NG-118
-    ],
-    [
-      [37.7920, -122.4280], // NG-086
-      [37.7820, -122.4080], // DEPOT 4
-      [37.7760, -122.3860], // NG-121
-    ],
-    [
-      [37.7800, -122.4180], // NG-097
-      [37.7710, -122.4040], // NG-133
-    ],
-  ];
+  // Filter geofences by category chip
+  const filteredGeofences = geofences.filter((g) => {
+    if (categoryFilter === 'ALL') return true;
+    if (categoryFilter === 'RESTRICTED') return g.category === 'restricted_zone';
+    if (categoryFilter === 'DELIVERY') return g.category === 'delivery_zone';
+    if (categoryFilter === 'TOLL') return g.category === 'toll_zone';
+    return true;
+  });
 
   return (
     <div className="relative w-full h-full min-h-[600px] overflow-hidden bg-[#060a12]">
-      {/* Tactical Grid Overlay across Map matching screenshot (Active in DARK mode) */}
+      {/* Tactical Grid Overlay across Map (Active in DARK mode) */}
       {mapMode === 'dark' && (
         <div className="absolute inset-0 z-[400] tactical-grid-overlay pointer-events-none" />
       )}
 
-      {/* Top Left Floating Search & Filter Pill Widget (NIGHTGRID Style from Screenshot) */}
+      {/* Top Left Floating Search & Filter Bar */}
       <div className="absolute top-5 left-5 z-[1000] w-72 space-y-2 pointer-events-auto select-none">
         <div className="relative">
           <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
           <input
-            id="nightgrid-search-input"
+            id="geofence-search-input"
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search unit, driver, route..."
+            placeholder="Search vehicle or driver..."
             className="w-full bg-[#080d19]/90 backdrop-blur-xl border border-slate-700/80 rounded-md py-2 pl-9 pr-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 shadow-2xl font-mono"
           />
         </div>
 
-        {/* Filter Chips from Screenshot */}
+        {/* Category Filter Chips */}
         <div className="flex items-center gap-1 bg-[#080d19]/80 p-1 rounded-md border border-slate-800/80 backdrop-blur-md text-[10px] font-mono">
-          {(['ALL', 'MOVING', 'IDLE', 'OFFLINE'] as const).map((ft) => (
+          {(['ALL', 'RESTRICTED', 'DELIVERY', 'TOLL'] as const).map((cat) => (
             <button
-              key={ft}
-              onClick={() => setFilterType(ft)}
-              className={`px-2.5 py-0.5 rounded transition uppercase font-semibold ${
-                filterType === ft
+              key={cat}
+              onClick={() => setCategoryFilter(cat)}
+              className={`px-2 py-0.5 rounded transition uppercase font-semibold ${
+                categoryFilter === cat
                   ? 'bg-slate-700/90 text-cyan-300 shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              {ft}
+              {cat}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Top Right Map Mode Switcher (Preserving GRID, SATELLITE, ROADS) */}
-      <div className="absolute top-5 right-[360px] z-[1000] bg-[#080d19]/95 backdrop-blur-xl p-1 rounded-lg border border-slate-800 shadow-2xl flex items-center gap-1 select-none pointer-events-auto">
+      {/* Top Right Map Mode Switcher (GRID, SATELLITE, ROADS) */}
+      <div className="absolute top-5 right-[340px] z-[1000] bg-[#080d19]/95 backdrop-blur-xl p-1 rounded-lg border border-slate-800 shadow-2xl flex items-center gap-1 select-none pointer-events-auto">
         <button
           onClick={() => setMapMode('dark')}
           className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-semibold transition ${
@@ -243,27 +222,15 @@ export const MapView: React.FC<MapViewProps> = ({
         </button>
       </div>
 
-      {/* Bottom Left Fleet Status Widget (4 Counter Cards matching Screenshot) */}
+      {/* Bottom Left Real Status Summary Cards (Accurate dynamic data) */}
       <div className="absolute bottom-5 left-5 z-[1000] flex items-center gap-2 pointer-events-auto select-none">
-        {/* MOVING */}
-        <div className="bg-[#090f1e]/90 backdrop-blur-xl px-3.5 py-2 rounded-lg border border-slate-800/90 shadow-2xl min-w-[68px]">
-          <div className="text-[9px] text-slate-500 uppercase tracking-wider font-mono font-semibold">MOVING</div>
-          <div className="text-lg font-bold font-mono text-cyan-400 leading-tight mt-0.5">{movingCount}</div>
+        <div className="bg-[#090f1e]/90 backdrop-blur-xl px-3.5 py-2 rounded-lg border border-slate-800/90 shadow-2xl min-w-[75px]">
+          <div className="text-[9px] text-slate-500 uppercase tracking-wider font-mono font-semibold">VEHICLES</div>
+          <div className="text-lg font-bold font-mono text-cyan-400 leading-tight mt-0.5">{vehicles.length}</div>
         </div>
-        {/* IDLE */}
-        <div className="bg-[#090f1e]/90 backdrop-blur-xl px-3.5 py-2 rounded-lg border border-slate-800/90 shadow-2xl min-w-[68px]">
-          <div className="text-[9px] text-slate-500 uppercase tracking-wider font-mono font-semibold">IDLE</div>
-          <div className="text-lg font-bold font-mono text-emerald-400 leading-tight mt-0.5">{idleCount}</div>
-        </div>
-        {/* PARKED */}
-        <div className="bg-[#090f1e]/90 backdrop-blur-xl px-3.5 py-2 rounded-lg border border-slate-800/90 shadow-2xl min-w-[68px]">
-          <div className="text-[9px] text-slate-500 uppercase tracking-wider font-mono font-semibold">PARKED</div>
-          <div className="text-lg font-bold font-mono text-slate-300 leading-tight mt-0.5">{parkedCount}</div>
-        </div>
-        {/* OFFLINE */}
-        <div className="bg-[#090f1e]/90 backdrop-blur-xl px-3.5 py-2 rounded-lg border border-slate-800/90 shadow-2xl min-w-[68px]">
-          <div className="text-[9px] text-slate-500 uppercase tracking-wider font-mono font-semibold">OFFLINE</div>
-          <div className="text-lg font-bold font-mono text-rose-500 leading-tight mt-0.5">{offlineCount}</div>
+        <div className="bg-[#090f1e]/90 backdrop-blur-xl px-3.5 py-2 rounded-lg border border-slate-800/90 shadow-2xl min-w-[75px]">
+          <div className="text-[9px] text-slate-500 uppercase tracking-wider font-mono font-semibold">GEOFENCES</div>
+          <div className="text-lg font-bold font-mono text-emerald-400 leading-tight mt-0.5">{geofences.length}</div>
         </div>
       </div>
 
@@ -287,43 +254,8 @@ export const MapView: React.FC<MapViewProps> = ({
           onMapClick={onMapClick}
         />
 
-        {/* Tactical Route Network Lines matching Screenshot */}
-        {tacticalRoutes.map((route, idx) => (
-          <Polyline
-            key={`route-${idx}`}
-            positions={route}
-            pathOptions={{
-              color: '#1e2d48',
-              weight: 1.5,
-              opacity: 0.8,
-            }}
-          />
-        ))}
-
-        {/* Depots matching Screenshot [DEPOT 4] */}
-        {tacticalDepots.map((depot) => (
-          <CircleMarker
-            key={depot.id}
-            center={[depot.lat, depot.lng]}
-            radius={4}
-            pathOptions={{
-              fillColor: '#334155',
-              color: '#64748b',
-              weight: 1,
-              fillOpacity: 1,
-            }}
-          >
-            <Tooltip permanent direction="bottom" offset={[0, 4]}>
-              <div className="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded bg-[#070c18]/90 text-slate-400 border border-slate-800 shadow uppercase flex items-center gap-1">
-                <Building2 className="w-2.5 h-2.5" />
-                <span>{depot.name}</span>
-              </div>
-            </Tooltip>
-          </CircleMarker>
-        ))}
-
         {/* Circular Radar Geofence Boundaries */}
-        {geofences.map((geo) => {
+        {filteredGeofences.map((geo) => {
           const color = categoryColors[geo.category] || categoryColors.delivery_zone;
           const { center, radius } = getPolygonCenterAndRadius(geo.coordinates);
           const isRestricted = geo.category === 'restricted_zone';
@@ -341,7 +273,7 @@ export const MapView: React.FC<MapViewProps> = ({
 
           return (
             <React.Fragment key={geo.id}>
-              {/* Outer Radar Boundary */}
+              {/* Outer Radar Boundary Circle */}
               <Circle
                 center={center}
                 radius={radius}
@@ -365,13 +297,13 @@ export const MapView: React.FC<MapViewProps> = ({
                       {geo.category.replace('_', ' ')} · Radius {radius}m
                     </div>
                     <div className="text-[10px] text-emerald-400 font-semibold mt-1">
-                      Click inside to deploy unit & trigger alert
+                      Click inside to deploy selected vehicle
                     </div>
                   </div>
                 </Tooltip>
               </Circle>
 
-              {/* Concentric Range Ring 1 (66% radius) */}
+              {/* Concentric Inner Range Ring (66% radius) */}
               <Circle
                 center={center}
                 radius={Math.round(radius * 0.66)}
@@ -384,7 +316,7 @@ export const MapView: React.FC<MapViewProps> = ({
                 eventHandlers={{ click: handleClick }}
               />
 
-              {/* Concentric Range Ring 2 (33% radius) */}
+              {/* Concentric Inner Range Ring (33% radius) */}
               <Circle
                 center={center}
                 radius={Math.round(radius * 0.33)}
@@ -415,7 +347,7 @@ export const MapView: React.FC<MapViewProps> = ({
                       ? 'bg-rose-950/90 text-rose-300 border-rose-800'
                       : 'bg-[#070c18]/90 text-slate-300 border-slate-700'
                   }`}>
-                    {geo.name.slice(0, 16)}
+                    {geo.name}
                   </div>
                 </Tooltip>
               </CircleMarker>
@@ -423,30 +355,15 @@ export const MapView: React.FC<MapViewProps> = ({
           );
         })}
 
-        {/* Tactical Fleet Unit Markers matching Screenshot */}
+        {/* Real Vehicle Fleet Markers on Map */}
         {filteredVehicles
           .filter((v) => v.last_latitude != null && v.last_longitude != null)
           .map((v) => {
             const isSelected = selectedVehicle?.id === v.id;
-            const isRed = v.vehicle_number === 'NG-086';
-            const isTeal = v.vehicle_number === 'NG-097';
-
-            let dotColor = '#f8fafc'; // default clean white dot
-            let strokeColor = '#475569';
-            if (isSelected) {
-              dotColor = '#22d3ee';
-              strokeColor = '#0891b2';
-            } else if (isRed) {
-              dotColor = '#f43f5e'; // coral/salmon red from screenshot
-              strokeColor = '#be123c';
-            } else if (isTeal) {
-              dotColor = '#14b8a6'; // teal dot from screenshot
-              strokeColor = '#0f766e';
-            }
 
             return (
               <React.Fragment key={v.id}>
-                {/* Glow ring for selected unit (NG-104) */}
+                {/* Glow ring for selected vehicle */}
                 {isSelected && (
                   <CircleMarker
                     center={[v.last_latitude!, v.last_longitude!]}
@@ -464,10 +381,10 @@ export const MapView: React.FC<MapViewProps> = ({
                 {/* Tactical Dot Marker */}
                 <CircleMarker
                   center={[v.last_latitude!, v.last_longitude!]}
-                  radius={isSelected ? 6 : 4.5}
+                  radius={isSelected ? 6 : 5}
                   pathOptions={{
-                    fillColor: dotColor,
-                    color: strokeColor,
+                    fillColor: isSelected ? '#22d3ee' : '#e2e8f0',
+                    color: isSelected ? '#0891b2' : '#475569',
                     fillOpacity: 1,
                     weight: 2,
                   }}
@@ -475,7 +392,7 @@ export const MapView: React.FC<MapViewProps> = ({
                     click: () => onSelectVehicle(v),
                   }}
                 >
-                  {/* Tactical callout box matching Screenshot labels [NG-104], [NG-086], etc. */}
+                  {/* Tactical callout box showing Vehicle Number */}
                   <Tooltip permanent direction="bottom" offset={[0, 4]}>
                     <div
                       onClick={() => onSelectVehicle(v)}

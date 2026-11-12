@@ -53,8 +53,8 @@ export const App: React.FC = () => {
       setVehicles(vehRes.vehicles || []);
 
       if (vehRes.vehicles && vehRes.vehicles.length > 0) {
-        const defaultUnit = vehRes.vehicles.find((v) => v.vehicle_number === 'NG-104') || vehRes.vehicles[0];
-        setSelectedVehicle((prev) => prev || defaultUnit);
+        const defaultVehicle = vehRes.vehicles.find((v) => v.vehicle_number === 'KA-01-AB-1234') || vehRes.vehicles[0];
+        setSelectedVehicle((prev) => prev || defaultVehicle);
       }
     } catch (err) {
       console.error('Failed to load initial data:', err);
@@ -90,7 +90,7 @@ export const App: React.FC = () => {
         )
       );
       setSelectedVehicle((prev) =>
-        prev ? { ...prev, last_latitude: lat, last_longitude: lng } : null
+        prev ? { ...prev, last_latitude: lat, last_longitude: lng, last_updated_at: new Date().toISOString() } : null
       );
     } catch (err) {
       console.error('Failed to update vehicle location:', err);
@@ -112,7 +112,7 @@ export const App: React.FC = () => {
       {/* Real-time Alert Toast Notification */}
       <AlertToast latestAlert={latestAlert} />
 
-      {/* Top Header matching NIGHTGRID banner */}
+      {/* Top Header with explicitly named buttons */}
       <TopHeader
         wsConnected={isConnected}
         alertCount={wsAlerts.length}
@@ -131,7 +131,7 @@ export const App: React.FC = () => {
 
       {/* Middle Workspace: Left Rail + Fullscreen Map + Right Telemetry HUD */}
       <div className="flex-1 flex relative overflow-hidden">
-        {/* Left Navigation Rail from screenshot */}
+        {/* Left Navigation Rail (MAP, VEHICLES, GEOFENCES, ALERTS) */}
         <LeftNavRail
           activeTab={activeNavTab}
           onTabChange={(tab) => {
@@ -155,7 +155,7 @@ export const App: React.FC = () => {
             onAddPoint={handleAddDrawingPoint}
           />
 
-          {/* Right Floating Telemetry HUD (Directly matches the screenshot!) */}
+          {/* Right Floating Telemetry HUD */}
           <div className="absolute top-5 right-5 z-[1000] pointer-events-none">
             <UnitDetailPanel
               vehicle={selectedVehicle}
@@ -165,14 +165,14 @@ export const App: React.FC = () => {
             />
           </div>
 
-          {/* Slide-over Side Drawer for UNITS / ZONES / ALERTS */}
+          {/* Slide-over Side Drawer for VEHICLES / GEOFENCES / ALERTS */}
           {activeNavTab !== 'map' && (
             <div className="absolute top-0 left-0 bottom-0 z-[1100] w-96 bg-[#080d19]/95 backdrop-blur-2xl border-r border-slate-800 p-4 shadow-2xl flex flex-col">
               <div className="flex items-center justify-between pb-3 border-b border-slate-800">
                 <span className="font-mono font-bold text-xs uppercase tracking-wider text-cyan-400">
-                  {activeNavTab === 'units' && 'FLEET UNITS'}
-                  {activeNavTab === 'zones' && 'RADAR GEOFENCES'}
-                  {activeNavTab === 'alerts' && 'REAL-TIME ALERTS FEED'}
+                  {activeNavTab === 'vehicles' && 'VEHICLES'}
+                  {activeNavTab === 'geofences' && 'GEOFENCES'}
+                  {activeNavTab === 'alerts' && 'REAL-TIME ALERTS'}
                 </span>
                 <button
                   onClick={() => setActiveNavTab('map')}
@@ -183,7 +183,7 @@ export const App: React.FC = () => {
               </div>
 
               <div className="flex-1 overflow-y-auto mt-3">
-                {activeNavTab === 'units' && (
+                {activeNavTab === 'vehicles' && (
                   <VehicleList
                     vehicles={vehicles}
                     selectedVehicle={selectedVehicle}
@@ -194,7 +194,7 @@ export const App: React.FC = () => {
                   />
                 )}
 
-                {activeNavTab === 'zones' && (
+                {activeNavTab === 'geofences' && (
                   <GeofenceList
                     geofences={geofences}
                     selectedCategory={categoryFilter}
@@ -237,10 +237,10 @@ export const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Bottom Bar from Screenshot */}
+      {/* Bottom Bar */}
       <BottomBar
-        onOpenVehicles={() => setActiveNavTab('units')}
-        onOpenGeofences={() => setActiveNavTab('zones')}
+        onOpenVehicles={() => setActiveNavTab('vehicles')}
+        onOpenGeofences={() => setActiveNavTab('geofences')}
         onOpenAlerts={() => setActiveNavTab('alerts')}
       />
 
