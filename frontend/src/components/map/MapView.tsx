@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   MapContainer,
   TileLayer,
-  Circle,
   CircleMarker,
   Polygon,
   Polyline,
@@ -10,9 +9,9 @@ import {
   useMapEvents,
 } from 'react-leaflet';
 import { Geofence, Vehicle, categoryColors } from '../../types';
-import { ShieldAlert, Globe, Layers, Moon, Search, Navigation, PenTool, Check, RotateCcw, X } from 'lucide-react';
+import { ShieldAlert, Globe, Layers, Search, Navigation, PenTool, Check, RotateCcw, X } from 'lucide-react';
 
-export type MapMode = 'dark' | 'satellite' | 'streets';
+export type MapMode = 'streets' | 'satellite';
 
 interface MapViewProps {
   geofences: Geofence[];
@@ -28,25 +27,9 @@ interface MapViewProps {
   onCancelDrawing?: () => void;
 }
 
-// Haversine distance helper
-function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371e3;
-  const phi1 = (lat1 * Math.PI) / 180;
-  const phi2 = (lat2 * Math.PI) / 180;
-  const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
-  const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
-
-  const a =
-    Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
-    Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return R * c;
-}
-
-// Compute centroid & circular radar radius
-function getPolygonCenterAndRadius(coords: [number, number][]): { center: [number, number]; radius: number } {
-  if (!coords || coords.length === 0) return { center: [37.7850, -122.4100], radius: 450 };
+// Compute centroid of polygon for label placement
+function getPolygonCentroid(coords: [number, number][]): [number, number] {
+  if (!coords || coords.length === 0) return [37.7850, -122.4100];
 
   let sumLat = 0;
   let sumLng = 0;
@@ -57,15 +40,7 @@ function getPolygonCenterAndRadius(coords: [number, number][]): { center: [numbe
     sumLng += coords[i][1];
   }
 
-  const center: [number, number] = [sumLat / n, sumLng / n];
-
-  let maxDist = 0;
-  for (let i = 0; i < n; i++) {
-    const d = getDistanceInMeters(center[0], center[1], coords[i][0], coords[i][1]);
-    if (d > maxDist) maxDist = d;
-  }
-
-  return { center, radius: Math.max(Math.round(maxDist), 380) };
+  return [sumLat / n, sumLng / n];
 }
 
 function MapEvents({
@@ -91,22 +66,17 @@ function MapEvents({
   return null;
 }
 
-// Tile Providers (Clean dark, satellite imagery, and roads without artificial grid overlays)
+// Tile Providers (Roads/Streets view and High-res Satellite view)
 const mapTiles: Record<MapMode, { url: string; attribution: string; maxZoom: number }> = {
-  dark: {
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; CARTO &copy; OpenStreetMap',
+  streets: {
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; OpenStreetMap contributors',
     maxZoom: 19,
   },
   satellite: {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: 'Tiles &copy; Esri',
     maxZoom: 18,
-  },
-  streets: {
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; OpenStreetMap contributors',
-    maxZoom: 19,
   },
 };
 
@@ -123,7 +93,7 @@ export const MapView: React.FC<MapViewProps> = ({
   onFinishDrawing,
   onCancelDrawing,
 }) => {
-  const [mapMode, setMapMode] = useState<MapMode>('dark');
+  const [mapMode, setMapMode] = useState<MapMode>('streets');
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
 
@@ -150,7 +120,7 @@ export const MapView: React.FC<MapViewProps> = ({
   });
 
   return (
-    <div className="relative w-full h-full min-h-[600px] overflow-hidden bg-[#060a12]">
+    <div className="relative w-full h-full min-h-[600px] overflow-hidden bg-[#0a0f1d]">
       {/* Floating Drawing Mode Banner (Appears when user clicks Draw Geofence) */}
       {isDrawing && (
         <div className="absolute top-5 left-1/2 transform -translate-x-1/2 z-[1500] bg-[#0c1322]/95 backdrop-blur-xl border-2 border-amber-500 rounded-xl px-5 py-2.5 shadow-2xl flex items-center gap-4 text-white font-mono select-none animate-in fade-in slide-in-from-top-4">
@@ -231,24 +201,24 @@ export const MapView: React.FC<MapViewProps> = ({
         </div>
       </div>
 
-      {/* Top Right Map Mode Switcher (Clean DARK, SATELLITE, ROADS) */}
+      {/* Top Right Map Mode Switcher (ROADS and SATELLITE only) */}
       <div className="absolute top-5 right-[340px] z-[1000] bg-[#080d19]/95 backdrop-blur-xl p-1 rounded-lg border border-slate-800 shadow-2xl flex items-center gap-1 select-none pointer-events-auto">
         <button
-          onClick={() => setMapMode('dark')}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-semibold transition ${
-            mapMode === 'dark'
+          onClick={() => setMapMode('streets')}
+          className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-mono font-semibold transition ${
+            mapMode === 'streets'
               ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-800/80 shadow'
               : 'text-slate-400 hover:text-slate-200'
           }`}
-          title="Clean Dark Mode"
+          title="Roads & Streets View"
         >
-          <Moon className="w-3.5 h-3.5" />
-          <span>DARK</span>
+          <Layers className="w-3.5 h-3.5" />
+          <span>ROADS</span>
         </button>
 
         <button
           onClick={() => setMapMode('satellite')}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-semibold transition ${
+          className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-mono font-semibold transition ${
             mapMode === 'satellite'
               ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-800/80 shadow'
               : 'text-slate-400 hover:text-slate-200'
@@ -257,19 +227,6 @@ export const MapView: React.FC<MapViewProps> = ({
         >
           <Globe className="w-3.5 h-3.5" />
           <span>SATELLITE</span>
-        </button>
-
-        <button
-          onClick={() => setMapMode('streets')}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-semibold transition ${
-            mapMode === 'streets'
-              ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-800/80 shadow'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-          title="Roads & Streets"
-        >
-          <Layers className="w-3.5 h-3.5" />
-          <span>ROADS</span>
         </button>
       </div>
 
@@ -318,19 +275,19 @@ export const MapView: React.FC<MapViewProps> = ({
                   color: '#f59e0b',
                   weight: 3,
                   dashArray: '6, 6',
-                  opacity: 0.9,
+                  opacity: 0.95,
                 }}
               />
             )}
 
-            {/* When 3 or more points exist, show the filled polygon shape */}
+            {/* When 3 or more points exist, show the filled polygon shape preview */}
             {drawingPoints.length >= 3 && (
               <Polygon
                 positions={drawingPoints}
                 pathOptions={{
                   color: '#f59e0b',
                   fillColor: '#f59e0b',
-                  fillOpacity: 0.25,
+                  fillOpacity: 0.28,
                   weight: 2,
                   dashArray: '6, 6',
                 }}
@@ -371,11 +328,11 @@ export const MapView: React.FC<MapViewProps> = ({
         )}
 
         {/* ============================================================ */}
-        {/* GEOFENCE RADAR CIRCLES                                       */}
+        {/* EXACT POLYGON GEOFENCE BOUNDARIES (True drawn shape)        */}
         {/* ============================================================ */}
         {filteredGeofences.map((geo) => {
           const color = categoryColors[geo.category] || categoryColors.delivery_zone;
-          const { center, radius } = getPolygonCenterAndRadius(geo.coordinates);
+          const centroid = getPolygonCentroid(geo.coordinates);
           const isRestricted = geo.category === 'restricted_zone';
           const isToll = geo.category === 'toll_zone';
 
@@ -389,19 +346,20 @@ export const MapView: React.FC<MapViewProps> = ({
             }
           };
 
+          const strokeColor = isRestricted ? '#f43f5e' : isToll ? '#f59e0b' : color.stroke;
+          const fillColor = isRestricted ? '#f43f5e' : isToll ? '#f59e0b' : color.fill;
+
           return (
             <React.Fragment key={geo.id}>
-              {/* Outer Radar Boundary Circle */}
-              <Circle
-                center={center}
-                radius={radius}
+              {/* True Polygon Shape as Drawn by User */}
+              <Polygon
+                positions={geo.coordinates}
                 pathOptions={{
-                  color: isRestricted ? '#f43f5e' : isToll ? '#f59e0b' : color.stroke,
-                  fillColor: isRestricted ? '#f43f5e' : isToll ? '#f59e0b' : color.fill,
-                  fillOpacity: isRestricted ? 0.32 : 0.16,
-                  dashArray: '5, 8',
-                  weight: isRestricted ? 2.5 : 1.5,
-                  className: isRestricted ? 'radar-circle' : isToll ? 'toll-radar' : 'delivery-radar',
+                  color: strokeColor,
+                  fillColor: fillColor,
+                  fillOpacity: isRestricted ? 0.35 : 0.22,
+                  weight: isRestricted ? 2.5 : 2,
+                  dashArray: isRestricted ? '6, 6' : undefined,
                 }}
                 eventHandlers={{ click: handleClick }}
               >
@@ -412,47 +370,21 @@ export const MapView: React.FC<MapViewProps> = ({
                       <span className={isRestricted ? 'text-rose-300' : 'text-cyan-300'}>{geo.name}</span>
                     </div>
                     <div className="text-[10px] text-slate-400 uppercase mt-0.5">
-                      {geo.category.replace('_', ' ')} · Radius {radius}m
+                      {geo.category.replace('_', ' ')} · Polygon ({geo.coordinates.length > 1 ? geo.coordinates.length - 1 : geo.coordinates.length} vertices)
                     </div>
                     <div className="text-[10px] text-emerald-400 font-semibold mt-1">
                       Click inside to deploy selected vehicle
                     </div>
                   </div>
                 </Tooltip>
-              </Circle>
+              </Polygon>
 
-              {/* Concentric Inner Range Ring (66% radius) */}
-              <Circle
-                center={center}
-                radius={Math.round(radius * 0.66)}
-                pathOptions={{
-                  color: isRestricted ? '#f43f5e' : color.stroke,
-                  fillOpacity: 0.04,
-                  dashArray: '3, 6',
-                  weight: 1,
-                }}
-                eventHandlers={{ click: handleClick }}
-              />
-
-              {/* Concentric Inner Range Ring (33% radius) */}
-              <Circle
-                center={center}
-                radius={Math.round(radius * 0.33)}
-                pathOptions={{
-                  color: isRestricted ? '#f43f5e' : color.stroke,
-                  fillOpacity: 0.06,
-                  dashArray: '2, 4',
-                  weight: 1,
-                }}
-                eventHandlers={{ click: handleClick }}
-              />
-
-              {/* Center Radar Beacon with Zone Tag */}
+              {/* Centroid Tag Marker showing Zone Name */}
               <CircleMarker
-                center={center}
-                radius={4}
+                center={centroid}
+                radius={3.5}
                 pathOptions={{
-                  fillColor: isRestricted ? '#f43f5e' : color.stroke,
+                  fillColor: strokeColor,
                   color: '#ffffff',
                   fillOpacity: 1,
                   weight: 1.5,
