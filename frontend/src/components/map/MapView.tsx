@@ -4,11 +4,13 @@ import {
   TileLayer,
   Circle,
   CircleMarker,
+  Polygon,
+  Polyline,
   Tooltip,
   useMapEvents,
 } from 'react-leaflet';
 import { Geofence, Vehicle, categoryColors } from '../../types';
-import { ShieldAlert, Globe, Layers, Moon, Search, Navigation } from 'lucide-react';
+import { ShieldAlert, Globe, Layers, Moon, Search, Navigation, PenTool, Check, RotateCcw, X } from 'lucide-react';
 
 export type MapMode = 'dark' | 'satellite' | 'streets';
 
@@ -21,6 +23,9 @@ interface MapViewProps {
   isDrawing: boolean;
   drawingPoints: [number, number][];
   onAddPoint: (point: [number, number]) => void;
+  onClearDrawing?: () => void;
+  onFinishDrawing?: () => void;
+  onCancelDrawing?: () => void;
 }
 
 // Haversine distance helper
@@ -86,7 +91,7 @@ function MapEvents({
   return null;
 }
 
-// Tile Providers
+// Tile Providers (Clean dark, satellite imagery, and roads without artificial grid overlays)
 const mapTiles: Record<MapMode, { url: string; attribution: string; maxZoom: number }> = {
   dark: {
     url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
@@ -114,6 +119,9 @@ export const MapView: React.FC<MapViewProps> = ({
   isDrawing,
   drawingPoints,
   onAddPoint,
+  onClearDrawing,
+  onFinishDrawing,
+  onCancelDrawing,
 }) => {
   const [mapMode, setMapMode] = useState<MapMode>('dark');
   const [searchQuery, setSearchQuery] = useState('');
@@ -143,9 +151,52 @@ export const MapView: React.FC<MapViewProps> = ({
 
   return (
     <div className="relative w-full h-full min-h-[600px] overflow-hidden bg-[#060a12]">
-      {/* Tactical Grid Overlay across Map (Active in DARK mode) */}
-      {mapMode === 'dark' && (
-        <div className="absolute inset-0 z-[400] tactical-grid-overlay pointer-events-none" />
+      {/* Floating Drawing Mode Banner (Appears when user clicks Draw Geofence) */}
+      {isDrawing && (
+        <div className="absolute top-5 left-1/2 transform -translate-x-1/2 z-[1500] bg-[#0c1322]/95 backdrop-blur-xl border-2 border-amber-500 rounded-xl px-5 py-2.5 shadow-2xl flex items-center gap-4 text-white font-mono select-none animate-in fade-in slide-in-from-top-4">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
+            <PenTool className="w-4 h-4 text-amber-400" />
+            <span className="text-xs font-bold text-amber-300">
+              DRAWING GEOFENCE: Click on map to add points ({drawingPoints.length} added)
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {drawingPoints.length >= 3 ? (
+              <button
+                onClick={onFinishDrawing}
+                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-md flex items-center gap-1 shadow transition"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>Finish & Save</span>
+              </button>
+            ) : (
+              <span className="text-[11px] text-slate-400 italic">
+                (Need {3 - drawingPoints.length} more {3 - drawingPoints.length === 1 ? 'pt' : 'pts'})
+              </span>
+            )}
+
+            {drawingPoints.length > 0 && (
+              <button
+                onClick={onClearDrawing}
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-md flex items-center gap-1 transition"
+                title="Reset points"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Clear</span>
+              </button>
+            )}
+
+            <button
+              onClick={onCancelDrawing}
+              className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition"
+              title="Cancel drawing"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Top Left Floating Search & Filter Bar */}
@@ -180,7 +231,7 @@ export const MapView: React.FC<MapViewProps> = ({
         </div>
       </div>
 
-      {/* Top Right Map Mode Switcher (GRID, SATELLITE, ROADS) */}
+      {/* Top Right Map Mode Switcher (Clean DARK, SATELLITE, ROADS) */}
       <div className="absolute top-5 right-[340px] z-[1000] bg-[#080d19]/95 backdrop-blur-xl p-1 rounded-lg border border-slate-800 shadow-2xl flex items-center gap-1 select-none pointer-events-auto">
         <button
           onClick={() => setMapMode('dark')}
@@ -189,10 +240,10 @@ export const MapView: React.FC<MapViewProps> = ({
               ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-800/80 shadow'
               : 'text-slate-400 hover:text-slate-200'
           }`}
-          title="Tactical Dark Grid Mode"
+          title="Clean Dark Mode"
         >
           <Moon className="w-3.5 h-3.5" />
-          <span>GRID</span>
+          <span>DARK</span>
         </button>
 
         <button
@@ -222,7 +273,7 @@ export const MapView: React.FC<MapViewProps> = ({
         </button>
       </div>
 
-      {/* Bottom Left Real Status Summary Cards (Accurate dynamic data) */}
+      {/* Bottom Left Real Status Summary Cards */}
       <div className="absolute bottom-5 left-5 z-[1000] flex items-center gap-2 pointer-events-auto select-none">
         <div className="bg-[#090f1e]/90 backdrop-blur-xl px-3.5 py-2 rounded-lg border border-slate-800/90 shadow-2xl min-w-[75px]">
           <div className="text-[9px] text-slate-500 uppercase tracking-wider font-mono font-semibold">VEHICLES</div>
@@ -239,7 +290,7 @@ export const MapView: React.FC<MapViewProps> = ({
         center={defaultCenter}
         zoom={13}
         scrollWheelZoom={true}
-        className="w-full h-full"
+        className={`w-full h-full ${isDrawing ? 'drawing-active' : ''}`}
       >
         <TileLayer
           key={mapMode}
@@ -254,7 +305,74 @@ export const MapView: React.FC<MapViewProps> = ({
           onMapClick={onMapClick}
         />
 
-        {/* Circular Radar Geofence Boundaries */}
+        {/* ============================================================ */}
+        {/* INTERACTIVE DRAWING OVERLAYS (Points, Polyline, & Polygon)   */}
+        {/* ============================================================ */}
+        {drawingPoints.length > 0 && (
+          <>
+            {/* Draw connecting lines between consecutive points */}
+            {drawingPoints.length >= 2 && (
+              <Polyline
+                positions={drawingPoints}
+                pathOptions={{
+                  color: '#f59e0b',
+                  weight: 3,
+                  dashArray: '6, 6',
+                  opacity: 0.9,
+                }}
+              />
+            )}
+
+            {/* When 3 or more points exist, show the filled polygon shape */}
+            {drawingPoints.length >= 3 && (
+              <Polygon
+                positions={drawingPoints}
+                pathOptions={{
+                  color: '#f59e0b',
+                  fillColor: '#f59e0b',
+                  fillOpacity: 0.25,
+                  weight: 2,
+                  dashArray: '6, 6',
+                }}
+              />
+            )}
+
+            {/* Draw visible circular markers for every single selected point */}
+            {drawingPoints.map((pt, idx) => (
+              <CircleMarker
+                key={`drawing-pt-${idx}`}
+                center={pt}
+                radius={7}
+                pathOptions={{
+                  fillColor: idx === 0 ? '#10b981' : '#f59e0b',
+                  color: '#ffffff',
+                  weight: 2.5,
+                  fillOpacity: 1,
+                }}
+                eventHandlers={{
+                  click: () => {
+                    // Clicking on point 1 when >= 3 points completes the polygon
+                    if (idx === 0 && drawingPoints.length >= 3 && onFinishDrawing) {
+                      onFinishDrawing();
+                    }
+                  },
+                }}
+              >
+                <Tooltip permanent direction="top" offset={[0, -6]}>
+                  <div className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold shadow-lg text-white ${
+                    idx === 0 ? 'bg-emerald-600 border border-emerald-400' : 'bg-amber-600 border border-amber-400'
+                  }`}>
+                    {idx === 0 ? 'Start (P1)' : `P${idx + 1}`}
+                  </div>
+                </Tooltip>
+              </CircleMarker>
+            ))}
+          </>
+        )}
+
+        {/* ============================================================ */}
+        {/* GEOFENCE RADAR CIRCLES                                       */}
+        {/* ============================================================ */}
         {filteredGeofences.map((geo) => {
           const color = categoryColors[geo.category] || categoryColors.delivery_zone;
           const { center, radius } = getPolygonCenterAndRadius(geo.coordinates);
@@ -355,7 +473,9 @@ export const MapView: React.FC<MapViewProps> = ({
           );
         })}
 
-        {/* Real Vehicle Fleet Markers on Map */}
+        {/* ============================================================ */}
+        {/* REAL VEHICLE FLEET MARKERS ON MAP                           */}
+        {/* ============================================================ */}
         {filteredVehicles
           .filter((v) => v.last_latitude != null && v.last_longitude != null)
           .map((v) => {

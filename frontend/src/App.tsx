@@ -153,6 +153,17 @@ export const App: React.FC = () => {
             isDrawing={isDrawing}
             drawingPoints={drawingPoints}
             onAddPoint={handleAddDrawingPoint}
+            onClearDrawing={() => setDrawingPoints([])}
+            onFinishDrawing={() => {
+              if (drawingPoints.length >= 3) {
+                setIsDrawing(false);
+                setIsGeofenceModalOpen(true);
+              }
+            }}
+            onCancelDrawing={() => {
+              setIsDrawing(false);
+              setDrawingPoints([]);
+            }}
           />
 
           {/* Right Floating Telemetry HUD */}

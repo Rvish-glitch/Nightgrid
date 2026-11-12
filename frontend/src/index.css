@@ -24,7 +24,12 @@ body {
   z-index: 1;
 }
 
-/* Remove default Leaflet tooltip styling for seamless tactical HUD pills */
+/* Crosshair cursor when drawing geofences */
+.leaflet-container.drawing-active {
+  cursor: crosshair !important;
+}
+
+/* Seamless Leaflet tooltips */
 .leaflet-tooltip {
   background: transparent !important;
   border: none !important;
@@ -37,15 +42,6 @@ body {
 .leaflet-tooltip-left:before,
 .leaflet-tooltip-right:before {
   display: none !important;
-}
-
-/* Tactical Grid overlay for NightGrid aesthetic */
-.tactical-grid-overlay {
-  pointer-events: none;
-  background-size: 80px 80px;
-  background-image: 
-    linear-gradient(to right, rgba(30, 48, 80, 0.3) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(30, 48, 80, 0.3) 1px, transparent 1px);
 }
 
 /* Radar pulse animation */
