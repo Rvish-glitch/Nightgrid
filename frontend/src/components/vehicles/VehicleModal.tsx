@@ -1,49 +1,44 @@
 import React, { useState } from 'react';
 import { createVehicle, updateVehicleLocation } from '../../api/client';
-import { X, Truck, MapPin, AlertCircle, Compass } from 'lucide-react';
+import { X, Truck, MapPin, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface VehicleModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (newVehicleId?: string) => void;
+  startingPosition: [number, number] | null;
 }
 
-export const VehicleModal: React.FC<VehicleModalProps> = ({ isOpen, onClose, onSuccess }) => {
+export const VehicleModal: React.FC<VehicleModalProps> = ({
+  isOpen,
+  onClose,
+  onSuccess,
+  startingPosition,
+}) => {
   const [vehicleNumber, setVehicleNumber] = useState('');
   const [driverName, setDriverName] = useState('');
   const [vehicleType, setVehicleType] = useState('truck');
   const [phone, setPhone] = useState('');
-
-  // Starting GPS Position (Defaulted to Downtown area)
-  const [latitude, setLatitude] = useState('37.7810');
-  const [longitude, setLongitude] = useState('-122.4140');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
-  const handleApplyPreset = (lat: number, lng: number) => {
-    setLatitude(lat.toFixed(4));
-    setLongitude(lng.toFixed(4));
+  // Format coordinate display cleanly
+  const formatCoord = (pos: [number, number] | null) => {
+    if (!pos) return '37.7830° N, 122.4110° W';
+    const latDir = pos[0] >= 0 ? 'N' : 'S';
+    const lngDir = pos[1] >= 0 ? 'E' : 'W';
+    return `${Math.abs(pos[0]).toFixed(5)}° ${latDir}, ${Math.abs(pos[1]).toFixed(5)}° ${lngDir}`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    const latNum = parseFloat(latitude);
-    const lngNum = parseFloat(longitude);
-
-    if (isNaN(latNum) || latNum < -90 || latNum > 90) {
-      setError('Starting latitude must be between -90 and 90');
-      return;
-    }
-
-    if (isNaN(lngNum) || lngNum < -180 || lngNum > 180) {
-      setError('Starting longitude must be between -180 and 180');
-      return;
-    }
+    const lat = startingPosition ? startingPosition[0] : 37.7830;
+    const lng = startingPosition ? startingPosition[1] : -122.4110;
 
     try {
       setLoading(true);
@@ -56,12 +51,12 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({ isOpen, onClose, onS
         phone: phone.trim(),
       });
 
-      // 2. Immediately place the vehicle at its starting GPS position
+      // 2. Immediately place the vehicle at the map point selected by the user
       if (res && res.id) {
         await updateVehicleLocation({
           vehicle_id: res.id,
-          latitude: latNum,
-          longitude: lngNum,
+          latitude: lat,
+          longitude: lng,
           timestamp: new Date().toISOString(),
         });
       }
@@ -81,17 +76,17 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({ isOpen, onClose, onS
 
   return (
     <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 font-mono select-none">
-      <div className="bg-[#090f1e] border border-slate-700/80 rounded-2xl w-full max-w-lg shadow-2xl p-6 text-slate-100">
+      <div className="bg-[#090f1e] border border-slate-700/80 rounded-2xl w-full max-w-md shadow-2xl p-6 text-slate-100">
         {/* Modal Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
           <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-lg bg-cyan-950/80 border border-cyan-700/60 text-cyan-400">
-              <MapPin className="w-5 h-5" />
+              <Truck className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white tracking-wide">Place New Vehicle</h2>
+              <h2 className="text-base font-bold text-white tracking-wide">Vehicle Details</h2>
               <p className="text-[11px] text-slate-400 font-sans">
-                Register a new fleet unit and place it at its initial GPS position
+                Location selected on map. Enter vehicle info to complete placement.
               </p>
             </div>
           </div>
@@ -100,18 +95,31 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({ isOpen, onClose, onS
           </button>
         </div>
 
+        {/* Selected Starting Location Badge (Picked from map point) */}
+        <div className="mt-3.5 p-3 bg-cyan-950/40 border border-cyan-700/60 rounded-xl flex items-center gap-2.5 text-xs text-cyan-300">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <div>
+            <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+              Starting Position Selected On Map
+            </div>
+            <div className="font-bold text-cyan-200 mt-0.5">
+              {formatCoord(startingPosition)}
+            </div>
+          </div>
+        </div>
+
         {error && (
-          <div className="mt-4 p-3 bg-red-950/60 border border-red-800 rounded-lg text-xs text-red-300 flex items-start gap-2">
+          <div className="mt-3 p-3 bg-red-950/60 border border-red-800 rounded-lg text-xs text-red-300 flex items-start gap-2">
             <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-3.5 text-xs">
-          {/* Row 1: Vehicle Number & Type */}
+          {/* Vehicle Number & Type */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">Vehicle Number *</label>
+              <label className="block text-slate-300 font-semibold mb-1">Registration Number *</label>
               <input
                 type="text"
                 required
@@ -137,7 +145,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({ isOpen, onClose, onS
             </div>
           </div>
 
-          {/* Row 2: Driver Name & Phone */}
+          {/* Driver Name & Phone */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-slate-300 font-semibold mb-1">Driver Name *</label>
@@ -164,82 +172,8 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({ isOpen, onClose, onS
             </div>
           </div>
 
-          {/* Starting GPS Position (As requested by user) */}
-          <div className="p-3.5 bg-[#060a14] border border-cyan-950/80 rounded-xl space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
-                <Compass className="w-3.5 h-3.5 text-cyan-400" />
-                Starting GPS Position
-              </span>
-              <span className="text-[10px] text-slate-500">Coordinates on map</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">Latitude (°N/S) *</label>
-                <input
-                  type="number"
-                  step="any"
-                  required
-                  value={latitude}
-                  onChange={(e) => setLatitude(e.target.value)}
-                  placeholder="37.7810"
-                  className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-cyan-500 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">Longitude (°E/W) *</label>
-                <input
-                  type="number"
-                  step="any"
-                  required
-                  value={longitude}
-                  onChange={(e) => setLongitude(e.target.value)}
-                  placeholder="-122.4140"
-                  className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-cyan-500 font-mono"
-                />
-              </div>
-            </div>
-
-            {/* Quick Placement Presets */}
-            <div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1.5">Quick Location Presets:</div>
-              <div className="flex flex-wrap gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => handleApplyPreset(37.7810, -122.4140)}
-                  className="px-2 py-0.5 rounded text-[10px] bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 transition"
-                >
-                  Downtown Delivery Zone
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleApplyPreset(37.7950, -122.4000)}
-                  className="px-2 py-0.5 rounded text-[10px] bg-rose-950/60 hover:bg-rose-900/60 border border-rose-800/80 text-rose-300 transition"
-                >
-                  Restricted Port
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleApplyPreset(37.7840, -122.3875)}
-                  className="px-2 py-0.5 rounded text-[10px] bg-amber-950/60 hover:bg-amber-900/60 border border-amber-800/80 text-amber-300 transition"
-                >
-                  Toll Zone
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleApplyPreset(37.7720, -122.4250)}
-                  className="px-2 py-0.5 rounded text-[10px] bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 transition"
-                >
-                  Outside (Clear)
-                </button>
-              </div>
-            </div>
-          </div>
-
           {/* Form Action Buttons */}
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
             <button
               type="button"
               onClick={onClose}

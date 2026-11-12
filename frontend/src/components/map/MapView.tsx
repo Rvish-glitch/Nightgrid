@@ -9,7 +9,7 @@ import {
   useMapEvents,
 } from 'react-leaflet';
 import { Geofence, Vehicle, categoryColors } from '../../types';
-import { ShieldAlert, Globe, Layers, Search, Navigation, PenTool, Check, RotateCcw, X } from 'lucide-react';
+import { ShieldAlert, Globe, Layers, Search, Navigation, PenTool, Check, RotateCcw, X, MapPin } from 'lucide-react';
 
 export type MapMode = 'streets' | 'satellite';
 
@@ -25,6 +25,9 @@ interface MapViewProps {
   onClearDrawing?: () => void;
   onFinishDrawing?: () => void;
   onCancelDrawing?: () => void;
+  isPlacingVehicle?: boolean;
+  onCancelPlacingVehicle?: () => void;
+  pendingVehiclePosition?: [number, number] | null;
 }
 
 // Compute centroid of polygon for label placement
@@ -92,6 +95,9 @@ export const MapView: React.FC<MapViewProps> = ({
   onClearDrawing,
   onFinishDrawing,
   onCancelDrawing,
+  isPlacingVehicle = false,
+  onCancelPlacingVehicle,
+  pendingVehiclePosition = null,
 }) => {
   const [mapMode, setMapMode] = useState<MapMode>('streets');
   const [searchQuery, setSearchQuery] = useState('');
@@ -169,6 +175,30 @@ export const MapView: React.FC<MapViewProps> = ({
         </div>
       )}
 
+      {/* Floating Vehicle Placement Banner (Appears when user clicks Place New Vehicle) */}
+      {isPlacingVehicle && (
+        <div className="absolute top-5 left-1/2 transform -translate-x-1/2 z-[1500] bg-[#0c1322]/95 backdrop-blur-xl border-2 border-cyan-500 rounded-xl px-5 py-2.5 shadow-2xl flex items-center gap-4 text-white font-mono select-none animate-in fade-in slide-in-from-top-4">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></span>
+            <MapPin className="w-4 h-4 text-cyan-400" />
+            <span className="text-xs font-bold text-cyan-300">
+              CLICK ON MAP TO SELECT VEHICLE STARTING LOCATION
+            </span>
+          </div>
+
+          {onCancelPlacingVehicle && (
+            <button
+              onClick={onCancelPlacingVehicle}
+              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs rounded-md flex items-center gap-1 transition"
+              title="Cancel placement"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Cancel</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Top Left Floating Search & Filter Bar */}
       <div className="absolute top-5 left-5 z-[1000] w-72 space-y-2 pointer-events-auto select-none">
         <div className="relative">
@@ -178,7 +208,7 @@ export const MapView: React.FC<MapViewProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search vehicle or driver..."
+            placeholder="Filter vehicle or driver..."
             className="w-full bg-[#080d19]/90 backdrop-blur-xl border border-slate-700/80 rounded-md py-2 pl-9 pr-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 shadow-2xl font-mono"
           />
         </div>
@@ -247,7 +277,7 @@ export const MapView: React.FC<MapViewProps> = ({
         center={defaultCenter}
         zoom={13}
         scrollWheelZoom={true}
-        className={`w-full h-full ${isDrawing ? 'drawing-active' : ''}`}
+        className={`w-full h-full ${isDrawing || isPlacingVehicle ? 'drawing-active' : ''}`}
       >
         <TileLayer
           key={mapMode}
@@ -261,6 +291,26 @@ export const MapView: React.FC<MapViewProps> = ({
           onAddPoint={onAddPoint}
           onMapClick={onMapClick}
         />
+
+        {/* Temporary Starting Location Pin when Placing Vehicle */}
+        {pendingVehiclePosition && (
+          <CircleMarker
+            center={pendingVehiclePosition}
+            radius={8}
+            pathOptions={{
+              fillColor: '#06b6d4',
+              color: '#ffffff',
+              weight: 3,
+              fillOpacity: 1,
+            }}
+          >
+            <Tooltip permanent direction="top" offset={[0, -6]}>
+              <div className="bg-cyan-900 border border-cyan-400 text-white font-mono text-[10px] font-bold px-1.5 py-0.5 rounded shadow-lg">
+                Selected Starting Point
+              </div>
+            </Tooltip>
+          </CircleMarker>
+        )}
 
         {/* ============================================================ */}
         {/* INTERACTIVE DRAWING OVERLAYS (Points, Polyline, & Polygon)   */}

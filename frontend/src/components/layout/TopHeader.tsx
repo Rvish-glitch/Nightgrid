@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Bell, MapPin, PenTool } from 'lucide-react';
+import { MapPin, PenTool } from 'lucide-react';
 
 interface TopHeaderProps {
   wsConnected: boolean;
-  alertCount: number;
-  onOpenAlerts: () => void;
-  onOpenNewVehicle: () => void;
+  onStartPlacingVehicle: () => void;
+  isPlacingVehicle: boolean;
   isDrawing: boolean;
   onToggleDrawing: () => void;
   drawingPointCount: number;
@@ -13,9 +12,8 @@ interface TopHeaderProps {
 
 export const TopHeader: React.FC<TopHeaderProps> = ({
   wsConnected,
-  alertCount,
-  onOpenAlerts,
-  onOpenNewVehicle,
+  onStartPlacingVehicle,
+  isPlacingVehicle,
   isDrawing,
   onToggleDrawing,
   drawingPointCount,
@@ -53,8 +51,8 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         </div>
       </div>
 
-      {/* Right: Actions, UTC Clock, Search, Notification Bell */}
-      <div className="flex items-center gap-2.5 font-mono text-xs">
+      {/* Right: Explicitly Named Action Buttons & UTC Clock (No duplicate Search or Bell) */}
+      <div className="flex items-center gap-3 font-mono text-xs">
         {/* Draw Geofence Polygon */}
         <button
           onClick={onToggleDrawing}
@@ -69,46 +67,24 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           <span>{isDrawing ? `Finish (${drawingPointCount} pts)` : 'Draw Geofence'}</span>
         </button>
 
-        {/* Place New Vehicle Button (asks for starting position) */}
+        {/* Place New Vehicle Button (Prompts to click on map to set starting position) */}
         <button
-          onClick={onOpenNewVehicle}
-          className="flex items-center gap-1.5 px-3 py-1 rounded bg-[#091624] hover:bg-[#0e2238] border border-cyan-900/60 text-cyan-300 hover:text-white transition font-semibold"
-          title="Register and place new vehicle on map with starting coordinates"
+          onClick={onStartPlacingVehicle}
+          className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs transition border font-semibold ${
+            isPlacingVehicle
+              ? 'bg-cyan-600 border-cyan-400 text-white animate-pulse shadow-lg ring-1 ring-cyan-400'
+              : 'bg-[#091624] hover:bg-[#0e2238] border border-cyan-900/60 text-cyan-300 hover:text-white'
+          }`}
+          title="Click on map to choose starting location for new vehicle"
         >
           <MapPin className="w-3.5 h-3.5" />
-          <span>Place New Vehicle</span>
+          <span>{isPlacingVehicle ? 'Click Map to Place...' : 'Place New Vehicle'}</span>
         </button>
 
         {/* Real-time UTC Clock */}
-        <div className="text-slate-300 text-xs px-2 py-1">
+        <div className="text-slate-400 text-xs px-2 py-1 bg-[#090f1c] border border-slate-800/80 rounded">
           {utcTime || '00:00:00 UTC'}
         </div>
-
-        {/* Search quick button */}
-        <button
-          onClick={() => {
-            const input = document.getElementById('geofence-search-input');
-            if (input) input.focus();
-          }}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#0b1120] border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 transition"
-        >
-          <Search className="w-3.5 h-3.5" />
-          <span className="font-bold text-[11px] tracking-wider">SEARCH</span>
-        </button>
-
-        {/* Real-time Alert Notification Bell */}
-        <button
-          onClick={onOpenAlerts}
-          className="relative p-1.5 rounded bg-[#0b1120] border border-slate-800 text-slate-300 hover:text-white transition"
-          title="View Alerts"
-        >
-          <Bell className="w-4 h-4" />
-          {alertCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-600 text-white rounded-full text-[9px] font-bold flex items-center justify-center animate-pulse">
-              {alertCount > 9 ? '9+' : alertCount}
-            </span>
-          )}
-        </button>
       </div>
     </header>
   );

@@ -26,7 +26,7 @@ export const App: React.FC = () => {
   const [currentEnclosingGeofences, setCurrentEnclosingGeofences] = useState<string[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<GeofenceCategory | ''>('');
 
-  // Active Drawer / View
+  // Active Drawer / View (Controlled only by LeftNavRail)
   const [activeNavTab, setActiveNavTab] = useState<NavTab>('map');
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
@@ -38,6 +38,10 @@ export const App: React.FC = () => {
   // Drawing state
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawingPoints, setDrawingPoints] = useState<[number, number][]>([]);
+
+  // Vehicle Placement State (Click map to choose location)
+  const [isPlacingVehicle, setIsPlacingVehicle] = useState(false);
+  const [pendingVehiclePosition, setPendingVehiclePosition] = useState<[number, number] | null>(null);
 
   // WebSocket hook
   const { messages: wsAlerts, latestAlert, isConnected, clearAlerts } = useWebSocket('/ws/alerts');
@@ -65,8 +69,20 @@ export const App: React.FC = () => {
     loadData();
   }, [categoryFilter]);
 
-  // Click on map to move vehicle or draw
+  // Click on map to move vehicle, draw, or place new vehicle
   const handleMapClick = async (lat: number, lng: number) => {
+    // 1. If in "Place New Vehicle" mode, capture clicked point and open modal
+    if (isPlacingVehicle) {
+      setPendingVehiclePosition([lat, lng]);
+      setIsPlacingVehicle(false);
+      setIsVehicleModalOpen(true);
+      return;
+    }
+
+    // 2. If in Drawing mode, point is added via MapEvents -> onAddPoint
+    if (isDrawing) return;
+
+    // 3. Normal mode: move currently selected vehicle
     if (!selectedVehicle) return;
 
     try {
@@ -112,15 +128,18 @@ export const App: React.FC = () => {
       {/* Real-time Alert Toast Notification */}
       <AlertToast latestAlert={latestAlert} />
 
-      {/* Top Header with explicitly named buttons */}
+      {/* Top Header with Action Buttons (No duplicate nav or search) */}
       <TopHeader
         wsConnected={isConnected}
-        alertCount={wsAlerts.length}
-        onOpenAlerts={() => setActiveNavTab('alerts')}
-        onOpenNewVehicle={() => setIsVehicleModalOpen(true)}
+        onStartPlacingVehicle={() => {
+          setIsPlacingVehicle(true);
+          setIsDrawing(false);
+        }}
+        isPlacingVehicle={isPlacingVehicle}
         isDrawing={isDrawing}
         onToggleDrawing={() => {
           setIsDrawing(!isDrawing);
+          setIsPlacingVehicle(false);
           if (isDrawing && drawingPoints.length >= 3) {
             setIsGeofenceModalOpen(true);
           }
@@ -130,7 +149,7 @@ export const App: React.FC = () => {
 
       {/* Middle Workspace: Left Rail + Fullscreen Map + Right Telemetry HUD */}
       <div className="flex-1 flex relative overflow-hidden">
-        {/* Left Navigation Rail (MAP, VEHICLES, GEOFENCES, ALERTS) */}
+        {/* Left Navigation Rail (Primary Navigation: MAP, VEHICLES, GEOFENCES, ALERTS, SETTINGS) */}
         <LeftNavRail
           activeTab={activeNavTab}
           onTabChange={(tab) => {
@@ -163,6 +182,9 @@ export const App: React.FC = () => {
               setIsDrawing(false);
               setDrawingPoints([]);
             }}
+            isPlacingVehicle={isPlacingVehicle}
+            onCancelPlacingVehicle={() => setIsPlacingVehicle(false)}
+            pendingVehiclePosition={pendingVehiclePosition}
           />
 
           {/* Right Floating Telemetry HUD */}
@@ -247,12 +269,8 @@ export const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Bottom Bar */}
-      <BottomBar
-        onOpenVehicles={() => setActiveNavTab('vehicles')}
-        onOpenGeofences={() => setActiveNavTab('geofences')}
-        onOpenAlerts={() => setActiveNavTab('alerts')}
-      />
+      {/* Bottom Status Bar (No duplicate nav buttons) */}
+      <BottomBar wsConnected={isConnected} />
 
       {/* Modals */}
       <GeofenceModal
@@ -266,10 +284,16 @@ export const App: React.FC = () => {
         }}
       />
 
+      {/* Place New Vehicle Modal with Selected Map Starting Point */}
       <VehicleModal
         isOpen={isVehicleModalOpen}
-        onClose={() => setIsVehicleModalOpen(false)}
+        startingPosition={pendingVehiclePosition}
+        onClose={() => {
+          setIsVehicleModalOpen(false);
+          setPendingVehiclePosition(null);
+        }}
         onSuccess={async (newId?: string) => {
+          setPendingVehiclePosition(null);
           await loadData();
           if (newId) {
             try {
