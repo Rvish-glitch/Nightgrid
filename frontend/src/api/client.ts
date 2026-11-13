@@ -8,7 +8,7 @@ import {
   EventType,
 } from '../types';
 
-const API_BASE = ''; // Relies on Vite proxy to http://localhost:8080
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, ''); // Configurable for Render/Cloudflare deployment, defaults to '' (Vite proxy)
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
