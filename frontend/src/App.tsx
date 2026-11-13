@@ -52,7 +52,7 @@ export const App: React.FC = () => {
   const [pendingVehiclePosition, setPendingVehiclePosition] = useState<[number, number] | null>(null);
 
   // WebSocket hook
-  const { messages: wsAlerts, latestAlert, isConnected, clearAlerts } = useWebSocket('/ws/alerts');
+  const { messages: wsAlerts, latestAlert, isConnected, clearAlerts } = useWebSocket();
 
   // Load initial data
   const loadData = async () => {
