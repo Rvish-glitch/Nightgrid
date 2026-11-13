@@ -10,6 +10,7 @@ backend/server
 # Dependencies
 node_modules/
 bun.lockb
+bun.lock
 .pnpm-store/
 
 # Build artifacts
