@@ -509,6 +509,7 @@ export const MapView: React.FC<MapViewProps> = ({
             if (isDrawing) {
               onAddPoint([lat, lng]);
             } else if (onMapClick) {
+              if (isInactive) return; // Inactive geofences ignore clicks / deployment
               onMapClick(lat, lng);
             }
           };

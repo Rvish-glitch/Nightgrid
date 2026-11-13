@@ -20,7 +20,7 @@ set "BACKEND_DIR=%PROJECT_DIR%\backend"
 set "FRONTEND_DIR=%PROJECT_DIR%\frontend"
 
 echo [1/3] Starting Go Backend in a new PowerShell window...
-start "Geofencing-Backend" powershell.exe -NoExit -ExecutionPolicy Bypass -Command "Set-Location '%BACKEND_DIR%'; Write-Host '==================================================' -ForegroundColor Cyan; Write-Host ' Geofencing Backend Server (Port 8080)' -ForegroundColor Green; Write-Host ' Swagger UI: http://localhost:8080/swagger' -ForegroundColor Yellow; Write-Host ' WebSocket:  ws://localhost:8080/ws/alerts' -ForegroundColor Yellow; Write-Host '==================================================' -ForegroundColor Cyan; if (Test-Path 'server.exe') { .\server.exe } else { go run cmd/server/main.go }"
+start "Geofencing-Backend" powershell.exe -NoExit -ExecutionPolicy Bypass -Command "Set-Location '%BACKEND_DIR%'; Write-Host '==================================================' -ForegroundColor Cyan; Write-Host ' Geofencing Backend Server (Port 8080)' -ForegroundColor Green; Write-Host ' Swagger UI: http://localhost:8080/swagger' -ForegroundColor Yellow; Write-Host ' WebSocket:  ws://localhost:8080/ws/alerts' -ForegroundColor Yellow; Write-Host '==================================================' -ForegroundColor Cyan; go run cmd/server/main.go"
 
 timeout /t 2 /nobreak >nul
 

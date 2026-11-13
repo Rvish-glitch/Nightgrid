@@ -93,6 +93,12 @@ export const App: React.FC = () => {
     // 3. Normal mode: move currently selected vehicle
     if (!selectedVehicle) return;
 
+    // If vehicle is paused / inactive, do not track or move it
+    if (selectedVehicle.status === 'inactive') {
+      console.warn(`Tracking is paused for vehicle ${selectedVehicle.vehicle_number}. Resume tracking to move.`);
+      return;
+    }
+
     try {
       const res = await updateVehicleLocation({
         vehicle_id: selectedVehicle.id,
@@ -134,52 +140,73 @@ export const App: React.FC = () => {
   // Toggle vehicle active/inactive status
   const handleToggleVehicleStatus = async (vehicleId: string, currentStatus: string) => {
     const nextStatus = currentStatus === 'inactive' ? 'active' : 'inactive';
+    // Optimistic UI update
+    setVehicles((prev) =>
+      prev.map((v) => (v.id === vehicleId ? { ...v, status: nextStatus } : v))
+    );
+    if (selectedVehicle?.id === vehicleId) {
+      setSelectedVehicle((prev) => (prev ? { ...prev, status: nextStatus } : null));
+    }
+
     try {
       await updateVehicleStatus(vehicleId, nextStatus);
-      setVehicles((prev) =>
-        prev.map((v) => (v.id === vehicleId ? { ...v, status: nextStatus } : v))
-      );
-      if (selectedVehicle?.id === vehicleId) {
-        setSelectedVehicle((prev) => (prev ? { ...prev, status: nextStatus } : null));
-      }
     } catch (err) {
       console.error('Failed to toggle vehicle status:', err);
+      // Revert if API failed
+      setVehicles((prev) =>
+        prev.map((v) => (v.id === vehicleId ? { ...v, status: currentStatus } : v))
+      );
+      if (selectedVehicle?.id === vehicleId) {
+        setSelectedVehicle((prev) => (prev ? { ...prev, status: currentStatus } : null));
+      }
     }
   };
 
   // Delete vehicle
   const handleDeleteVehicle = async (vehicleId: string) => {
+    // Optimistic removal
+    setVehicles((prev) => prev.filter((v) => v.id !== vehicleId));
+    if (selectedVehicle?.id === vehicleId) {
+      setSelectedVehicle(null);
+    }
+
     try {
       await deleteVehicle(vehicleId);
-      setVehicles((prev) => prev.filter((v) => v.id !== vehicleId));
-      if (selectedVehicle?.id === vehicleId) {
-        setSelectedVehicle(null);
-      }
     } catch (err) {
       console.error('Failed to delete vehicle:', err);
+      loadData();
     }
   };
 
   // Toggle geofence active/inactive status
   const handleToggleGeofenceStatus = async (geofenceId: string, currentStatus?: string) => {
     const nextStatus = currentStatus === 'inactive' ? 'active' : 'inactive';
+    // Optimistic UI update
+    setGeofences((prev) =>
+      prev.map((g) => (g.id === geofenceId ? { ...g, status: nextStatus } : g))
+    );
+
     try {
       await updateGeofenceStatus(geofenceId, nextStatus);
-      setGeofences((prev) =>
-        prev.map((g) => (g.id === geofenceId ? { ...g, status: nextStatus } : g))
-      );
     } catch (err) {
       console.error('Failed to toggle geofence status:', err);
+      // Revert if API failed
+      setGeofences((prev) =>
+        prev.map((g) => (g.id === geofenceId ? { ...g, status: currentStatus as any } : g))
+      );
     }
   };
 
   // Delete geofence
   const handleDeleteGeofence = async (geofenceId: string) => {
+    // Optimistic removal
+    setGeofences((prev) => prev.filter((g) => g.id !== geofenceId));
+
     try {
       await deleteGeofence(geofenceId);
-      setGeofences((prev) => prev.filter((g) => g.id !== geofenceId));
     } catch (err) {
       console.error('Failed to delete geofence:', err);
+      loadData();
     }
   };
 
