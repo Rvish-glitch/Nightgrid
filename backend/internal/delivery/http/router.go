@@ -1,6 +1,8 @@
 package http
 
 import (
+	"os"
+
 	"github.com/gin-gonic/gin"
 
 	"geofencing-backend/internal/delivery/middleware"
@@ -23,8 +25,25 @@ func SetupRouter(cfg RouterConfig) *gin.Engine {
 	r.Use(middleware.CORSMiddleware())
 	r.Use(middleware.TimingMiddleware())
 
+	// Check if frontend dist folder exists (e.g. all-in-one Docker container)
+	distPath := ""
+	if _, err := os.Stat("dist/index.html"); err == nil {
+		distPath = "dist"
+	} else if _, err := os.Stat("frontend/dist/index.html"); err == nil {
+		distPath = "frontend/dist"
+	}
+
+	if distPath != "" {
+		r.Static("/assets", distPath+"/assets")
+		r.Static("/vehicle-icons", distPath+"/vehicle-icons")
+	}
+
 	// Health and Root Status Endpoints
 	r.GET("/", func(c *gin.Context) {
+		if distPath != "" {
+			c.File(distPath + "/index.html")
+			return
+		}
 		c.JSON(200, gin.H{
 			"status":  "healthy",
 			"service": "Geofencing & Real-Time Alert Backend",

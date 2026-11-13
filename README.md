@@ -10,6 +10,14 @@
 - **Interactive Swagger Docs**: [https://nightgrid-backend-wje5.onrender.com/swagger](https://nightgrid-backend-wje5.onrender.com/swagger)
 - **Real-Time WebSocket Feed**: `wss://nightgrid-backend-wje5.onrender.com/ws/alerts`
 
+### 🐳 Docker Image (Unified Full-Stack)
+- **Docker Package Link**: [ghcr.io/rvish-glitch/nightgrid:latest](https://github.com/Rvish-glitch/Nightgrid/pkgs/container/nightgrid)
+- **Run with Single Command**:
+  ```bash
+  docker run -d -p 8080:8080 ghcr.io/rvish-glitch/nightgrid:latest
+  ```
+  *(Runs complete full-stack app: React Frontend + Go Backend + WebSockets + Spatial Engine on port 8080)*
+
 ---
 
 ## 📋 Overview
