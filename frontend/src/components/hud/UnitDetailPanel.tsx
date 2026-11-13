@@ -1,6 +1,6 @@
 import React from 'react';
 import { Vehicle } from '../../types';
-import { ShieldAlert, ShieldCheck, History, Send, MapPin, Phone, User, Truck, Car, Bus } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, History, Send } from 'lucide-react';
 
 interface UnitDetailPanelProps {
   vehicle: Vehicle | null;

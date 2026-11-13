@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { MapPin, PenTool } from 'lucide-react';
 
 interface TopHeaderProps {
-  wsConnected: boolean;
   onStartPlacingVehicle: () => void;
   isPlacingVehicle: boolean;
   isDrawing: boolean;
@@ -11,7 +10,6 @@ interface TopHeaderProps {
 }
 
 export const TopHeader: React.FC<TopHeaderProps> = ({
-  wsConnected,
   onStartPlacingVehicle,
   isPlacingVehicle,
   isDrawing,
@@ -32,26 +30,17 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
 
   return (
     <header className="h-12 bg-[#060a12] border-b border-slate-800/80 px-4 flex items-center justify-between z-30 select-none">
-      {/* Left: Branding & Connection Status */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded bg-[#091120] border border-cyan-800/60 flex items-center justify-center font-mono font-black text-[9px] text-cyan-400">
-            NG
-          </div>
-          <span className="font-extrabold tracking-widest text-sm text-white font-mono">
-            NIGHTGRID
-          </span>
+      {/* Left: Clean Branding (Red-marked telemetry text removed) */}
+      <div className="flex items-center gap-2">
+        <div className="w-5 h-5 rounded bg-[#091120] border border-cyan-800/60 flex items-center justify-center font-mono font-black text-[9px] text-cyan-400">
+          NG
         </div>
-
-        <span className="text-slate-700 font-mono text-xs">•</span>
-
-        <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
-          <span className={`w-1.5 h-1.5 rounded-full ${wsConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
-          <span>{wsConnected ? 'Telemetry Nominal · Real-Time Geofencing' : 'Connecting WebSocket...'}</span>
-        </div>
+        <span className="font-extrabold tracking-widest text-sm text-white font-mono">
+          NIGHTGRID
+        </span>
       </div>
 
-      {/* Right: Explicitly Named Action Buttons & UTC Clock (No duplicate Search or Bell) */}
+      {/* Right: Explicit Action Buttons & UTC Clock */}
       <div className="flex items-center gap-3 font-mono text-xs">
         {/* Draw Geofence Polygon */}
         <button
@@ -67,7 +56,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           <span>{isDrawing ? `Finish (${drawingPointCount} pts)` : 'Draw Geofence'}</span>
         </button>
 
-        {/* Place New Vehicle Button (Prompts to click on map to set starting position) */}
+        {/* Place New Vehicle Button */}
         <button
           onClick={onStartPlacingVehicle}
           className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs transition border font-semibold ${

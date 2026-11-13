@@ -128,9 +128,8 @@ export const App: React.FC = () => {
       {/* Real-time Alert Toast Notification */}
       <AlertToast latestAlert={latestAlert} />
 
-      {/* Top Header with Action Buttons (No duplicate nav or search) */}
+      {/* Top Header with Action Buttons */}
       <TopHeader
-        wsConnected={isConnected}
         onStartPlacingVehicle={() => {
           setIsPlacingVehicle(true);
           setIsDrawing(false);
@@ -270,8 +269,8 @@ export const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Bottom Status Bar (No duplicate nav buttons) */}
-      <BottomBar wsConnected={isConnected} />
+      {/* Bottom Bar with Swagger API link */}
+      <BottomBar />
 
       {/* Modals */}
       <GeofenceModal

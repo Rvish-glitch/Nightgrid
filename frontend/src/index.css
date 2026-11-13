@@ -44,31 +44,6 @@ body {
   display: none !important;
 }
 
-/* Radar pulse animation */
-@keyframes radar-sweep {
-  0% {
-    stroke-dashoffset: 0;
-  }
-  100% {
-    stroke-dashoffset: 120;
-  }
-}
-
-.radar-circle {
-  animation: radar-sweep 24s linear infinite;
-  filter: drop-shadow(0 0 12px rgba(244, 63, 94, 0.65));
-}
-
-.delivery-radar {
-  animation: radar-sweep 30s linear infinite;
-  filter: drop-shadow(0 0 10px rgba(6, 182, 212, 0.45));
-}
-
-.toll-radar {
-  animation: radar-sweep 28s linear infinite;
-  filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.45));
-}
-
 /* Custom scrollbars */
 ::-webkit-scrollbar {
   width: 4px;

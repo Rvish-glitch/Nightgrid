@@ -573,21 +573,6 @@ export const MapView: React.FC<MapViewProps> = ({
 
             return (
               <React.Fragment key={v.id}>
-                {/* Glowing radar ring around the selected vehicle only */}
-                {isSelected && (
-                  <CircleMarker
-                    center={[v.last_latitude!, v.last_longitude!]}
-                    radius={22}
-                    pathOptions={{
-                      color: '#06b6d4',
-                      fillOpacity: 0.15,
-                      fillColor: '#06b6d4',
-                      weight: 1.5,
-                      dashArray: '3, 4',
-                    }}
-                  />
-                )}
-
                 {/* Vehicle Marker with dedicated PNG Icon */}
                 <Marker
                   position={[v.last_latitude!, v.last_longitude!]}
