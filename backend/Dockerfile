@@ -5,12 +5,8 @@ WORKDIR /app
 
 RUN apk add --no-cache git
 
-COPY go.mod go.sum ./
-RUN go mod download
-
 COPY . .
-
-RUN CGO_ENABLED=0 GOOS=linux go build -o server ./cmd/server
+RUN go mod tidy && CGO_ENABLED=0 GOOS=linux go build -o server ./cmd/server
 
 # Final Lightweight Runtime Stage
 FROM alpine:3.19
