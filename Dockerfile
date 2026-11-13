@@ -1,7 +1,7 @@
 # =================================================================
 # Stage 1: Build Frontend (React + Vite + Tailwind + Leaflet)
 # =================================================================
-FROM oven/bun:1.1-alpine AS frontend-builder
+FROM oven/bun:alpine AS frontend-builder
 WORKDIR /app/frontend
 
 COPY frontend/package.json ./
@@ -13,7 +13,7 @@ RUN bun run build
 # =================================================================
 # Stage 2: Build Backend (Go Microservice & Spatial Engine)
 # =================================================================
-FROM golang:1.22-alpine AS backend-builder
+FROM golang:alpine AS backend-builder
 WORKDIR /app/backend
 RUN apk add --no-cache git
 
@@ -39,4 +39,3 @@ ENV PORT=8080
 ENV GIN_MODE=release
 
 CMD ["./server"]
-
