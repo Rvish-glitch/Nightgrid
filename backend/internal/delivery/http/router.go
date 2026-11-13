@@ -23,6 +23,26 @@ func SetupRouter(cfg RouterConfig) *gin.Engine {
 	r.Use(middleware.CORSMiddleware())
 	r.Use(middleware.TimingMiddleware())
 
+	// Health and Root Status Endpoints
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status":  "healthy",
+			"service": "Geofencing & Real-Time Alert Backend",
+			"docs":    "/swagger",
+			"endpoints": gin.H{
+				"swagger":   "/swagger",
+				"vehicles":  "/vehicles",
+				"geofences": "/geofences",
+				"alerts":    "/alerts",
+				"history":   "/violations/history",
+				"websocket": "/ws/alerts",
+			},
+		})
+	})
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "UP"})
+	})
+
 	// Swagger UI Endpoints
 	r.GET("/swagger", ServeSwaggerUI)
 	r.GET("/swagger/openapi.json", ServeOpenAPISpec)
