@@ -65,8 +65,15 @@ export const App: React.FC = () => {
       setVehicles(vehRes.vehicles || []);
 
       if (vehRes.vehicles && vehRes.vehicles.length > 0) {
-        const defaultVehicle = vehRes.vehicles.find((v) => v.vehicle_number === 'KA-01-AB-1234') || vehRes.vehicles[0];
-        setSelectedVehicle((prev) => prev || defaultVehicle);
+        setSelectedVehicle((prev) => {
+          if (!prev) {
+            return vehRes.vehicles.find((v) => v.vehicle_number === 'KA-01-AB-1234') || vehRes.vehicles[0];
+          }
+          // Match by ID or by Vehicle Number to ensure fresh backend ID is used if server restarted
+          const matched = vehRes.vehicles.find((v) => v.id === prev.id) ||
+                          vehRes.vehicles.find((v) => v.vehicle_number === prev.vehicle_number);
+          return matched || vehRes.vehicles[0];
+        });
       }
     } catch (err) {
       console.error('Failed to load initial data:', err);
@@ -124,6 +131,8 @@ export const App: React.FC = () => {
       );
     } catch (err) {
       console.error('Failed to update vehicle location:', err);
+      // Auto re-sync vehicle list if vehicle ID is stale on backend
+      loadData();
     }
   };
 
