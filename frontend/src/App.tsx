@@ -171,6 +171,7 @@ export const App: React.FC = () => {
             isDrawing={isDrawing}
             drawingPoints={drawingPoints}
             onAddPoint={handleAddDrawingPoint}
+            onUndoPoint={() => setDrawingPoints((prev) => prev.slice(0, -1))}
             onClearDrawing={() => setDrawingPoints([])}
             onFinishDrawing={() => {
               if (drawingPoints.length >= 3) {

@@ -22,3 +22,4 @@ echo   All Geofencing processes stopped and ports 8080 & 3000 freed!
 echo =========================================================
 echo.
 pause
+

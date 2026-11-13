@@ -139,6 +139,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
               >
                 <option value="truck">Truck</option>
                 <option value="van">Van</option>
+                <option value="bus">Bus</option>
                 <option value="car">Car</option>
                 <option value="motorcycle">Motorcycle</option>
               </select>

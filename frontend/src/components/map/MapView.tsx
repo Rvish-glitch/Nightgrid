@@ -6,10 +6,23 @@ import {
   Polygon,
   Polyline,
   Tooltip,
+  Marker,
   useMapEvents,
 } from 'react-leaflet';
+import L from 'leaflet';
 import { Geofence, Vehicle, categoryColors } from '../../types';
-import { ShieldAlert, Globe, Layers, Search, Navigation, PenTool, Check, RotateCcw, X, MapPin } from 'lucide-react';
+import {
+  ShieldAlert,
+  Globe,
+  Layers,
+  Search,
+  PenTool,
+  Check,
+  RotateCcw,
+  Undo2,
+  X,
+  MapPin,
+} from 'lucide-react';
 
 export type MapMode = 'streets' | 'satellite';
 
@@ -22,6 +35,7 @@ interface MapViewProps {
   isDrawing: boolean;
   drawingPoints: [number, number][];
   onAddPoint: (point: [number, number]) => void;
+  onUndoPoint?: () => void;
   onClearDrawing?: () => void;
   onFinishDrawing?: () => void;
   onCancelDrawing?: () => void;
@@ -83,6 +97,35 @@ const mapTiles: Record<MapMode, { url: string; attribution: string; maxZoom: num
   },
 };
 
+// Helper to construct Leaflet custom vehicle icon
+const vehicleIconCache = new Map<string, L.Icon>();
+
+function getVehicleIcon(vehicleType: string, isSelected: boolean): L.Icon {
+  const normType = (vehicleType || 'truck').toLowerCase();
+  const validTypes = ['truck', 'van', 'bus', 'car', 'motorcycle'];
+  const typeKey = validTypes.includes(normType) ? normType : 'truck';
+  const cacheKey = `${typeKey}_${isSelected ? 'sel' : 'norm'}`;
+
+  if (vehicleIconCache.has(cacheKey)) {
+    return vehicleIconCache.get(cacheKey)!;
+  }
+
+  const iconUrl = isSelected ? `/vehicles/${typeKey}_selected.png` : `/vehicles/${typeKey}.png`;
+  const iconSize: [number, number] = isSelected ? [36, 36] : [30, 30];
+  const iconAnchor: [number, number] = isSelected ? [18, 18] : [15, 15];
+
+  const icon = L.icon({
+    iconUrl,
+    iconSize,
+    iconAnchor,
+    popupAnchor: [0, -16],
+    className: isSelected ? 'vehicle-icon-selected' : 'vehicle-icon-normal',
+  });
+
+  vehicleIconCache.set(cacheKey, icon);
+  return icon;
+}
+
 export const MapView: React.FC<MapViewProps> = ({
   geofences,
   vehicles,
@@ -92,6 +135,7 @@ export const MapView: React.FC<MapViewProps> = ({
   isDrawing,
   drawingPoints,
   onAddPoint,
+  onUndoPoint,
   onClearDrawing,
   onFinishDrawing,
   onCancelDrawing,
@@ -127,72 +171,87 @@ export const MapView: React.FC<MapViewProps> = ({
 
   return (
     <div className="relative w-full h-full min-h-[600px] overflow-hidden bg-[#0a0f1d]">
-      {/* Floating Drawing Mode Banner (Appears when user clicks Draw Geofence) */}
+      {/* Compact Docked Drawing Mode Toolbar (Sleek Glassmorphic, No Heavy Yellow Box) */}
       {isDrawing && (
-        <div className="absolute top-5 left-1/2 transform -translate-x-1/2 z-[1500] bg-[#0c1322]/95 backdrop-blur-xl border-2 border-amber-500 rounded-xl px-5 py-2.5 shadow-2xl flex items-center gap-4 text-white font-mono select-none animate-in fade-in slide-in-from-top-4">
+        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-[1500] bg-[#070d19]/95 backdrop-blur-xl border border-amber-500/40 rounded-lg px-3.5 py-1.5 shadow-2xl flex items-center gap-3 text-white font-mono select-none animate-in fade-in slide-in-from-top-3">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
-            <PenTool className="w-4 h-4 text-amber-400" />
-            <span className="text-xs font-bold text-amber-300">
-              DRAWING GEOFENCE: Click on map to add points ({drawingPoints.length} added)
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+            <PenTool className="w-3.5 h-3.5 text-amber-400" />
+            <span className="text-[11px] font-bold text-amber-300 tracking-wide">
+              DRAWING ({drawingPoints.length} PTS)
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
-            {drawingPoints.length >= 3 ? (
-              <button
-                onClick={onFinishDrawing}
-                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-md flex items-center gap-1 shadow transition"
-              >
-                <Check className="w-3.5 h-3.5" />
-                <span>Finish & Save</span>
-              </button>
-            ) : (
-              <span className="text-[11px] text-slate-400 italic">
-                (Need {3 - drawingPoints.length} more {3 - drawingPoints.length === 1 ? 'pt' : 'pts'})
-              </span>
-            )}
+          <div className="h-3.5 w-px bg-slate-800"></div>
 
+          <div className="flex items-center gap-1.5">
+            {/* Undo Last Point Button */}
+            <button
+              onClick={onUndoPoint}
+              disabled={drawingPoints.length === 0}
+              className="px-2 py-0.5 bg-slate-800/80 hover:bg-slate-700 disabled:opacity-40 text-slate-200 text-[10.5px] rounded flex items-center gap-1 transition"
+              title="Remove last placed point"
+            >
+              <Undo2 className="w-3 h-3 text-amber-400" />
+              <span>Undo</span>
+            </button>
+
+            {/* Clear All Points */}
             {drawingPoints.length > 0 && (
               <button
                 onClick={onClearDrawing}
-                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-md flex items-center gap-1 transition"
+                className="px-2 py-0.5 bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-[10.5px] rounded flex items-center gap-1 transition"
                 title="Reset points"
               >
-                <RotateCcw className="w-3 h-3" />
+                <RotateCcw className="w-3 h-3 text-slate-400" />
                 <span>Clear</span>
               </button>
             )}
 
+            {/* Finish & Save (Requires >= 3 points) */}
+            {drawingPoints.length >= 3 ? (
+              <button
+                onClick={onFinishDrawing}
+                className="px-2.5 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10.5px] font-bold rounded flex items-center gap-1 shadow transition"
+              >
+                <Check className="w-3 h-3" />
+                <span>Finish</span>
+              </button>
+            ) : (
+              <span className="text-[10px] text-slate-500 italic">
+                (Need {3 - drawingPoints.length} more)
+              </span>
+            )}
+
+            {/* Cancel Drawing */}
             <button
               onClick={onCancelDrawing}
-              className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition"
+              className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition ml-1"
               title="Cancel drawing"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
       )}
 
-      {/* Floating Vehicle Placement Banner (Appears when user clicks Place New Vehicle) */}
+      {/* Compact Vehicle Placement Dock (When Placing New Vehicle) */}
       {isPlacingVehicle && (
-        <div className="absolute top-5 left-1/2 transform -translate-x-1/2 z-[1500] bg-[#0c1322]/95 backdrop-blur-xl border-2 border-cyan-500 rounded-xl px-5 py-2.5 shadow-2xl flex items-center gap-4 text-white font-mono select-none animate-in fade-in slide-in-from-top-4">
+        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-[1500] bg-[#070d19]/95 backdrop-blur-xl border border-cyan-500/50 rounded-lg px-3.5 py-1.5 shadow-2xl flex items-center gap-3 text-white font-mono select-none animate-in fade-in slide-in-from-top-3">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></span>
-            <MapPin className="w-4 h-4 text-cyan-400" />
-            <span className="text-xs font-bold text-cyan-300">
-              CLICK ON MAP TO SELECT VEHICLE STARTING LOCATION
+            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+            <MapPin className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="text-[11px] font-bold text-cyan-300">
+              CLICK ON MAP TO SELECT VEHICLE STARTING POINT
             </span>
           </div>
 
           {onCancelPlacingVehicle && (
             <button
               onClick={onCancelPlacingVehicle}
-              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs rounded-md flex items-center gap-1 transition"
-              title="Cancel placement"
+              className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10.5px] rounded transition flex items-center gap-1"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-3 h-3" />
               <span>Cancel</span>
             </button>
           )}
@@ -200,26 +259,26 @@ export const MapView: React.FC<MapViewProps> = ({
       )}
 
       {/* Top Left Floating Search & Filter Bar */}
-      <div className="absolute top-5 left-5 z-[1000] w-72 space-y-2 pointer-events-auto select-none">
+      <div className="absolute top-3 left-3 z-[1000] w-64 space-y-1.5 pointer-events-auto select-none">
         <div className="relative">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
+          <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
           <input
             id="geofence-search-input"
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Filter vehicle or driver..."
-            className="w-full bg-[#080d19]/90 backdrop-blur-xl border border-slate-700/80 rounded-md py-2 pl-9 pr-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 shadow-2xl font-mono"
+            className="w-full bg-[#080d19]/90 backdrop-blur-xl border border-slate-700/80 rounded-md py-1.5 pl-8 pr-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 shadow-2xl font-mono"
           />
         </div>
 
         {/* Category Filter Chips */}
-        <div className="flex items-center gap-1 bg-[#080d19]/80 p-1 rounded-md border border-slate-800/80 backdrop-blur-md text-[10px] font-mono">
+        <div className="flex items-center gap-1 bg-[#080d19]/80 p-1 rounded-md border border-slate-800/80 backdrop-blur-md text-[9.5px] font-mono">
           {(['ALL', 'RESTRICTED', 'DELIVERY', 'TOLL'] as const).map((cat) => (
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
-              className={`px-2 py-0.5 rounded transition uppercase font-semibold ${
+              className={`px-1.5 py-0.5 rounded transition uppercase font-semibold ${
                 categoryFilter === cat
                   ? 'bg-slate-700/90 text-cyan-300 shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
@@ -232,43 +291,46 @@ export const MapView: React.FC<MapViewProps> = ({
       </div>
 
       {/* Top Right Map Mode Switcher (ROADS and SATELLITE only) */}
-      <div className="absolute top-5 right-[340px] z-[1000] bg-[#080d19]/95 backdrop-blur-xl p-1 rounded-lg border border-slate-800 shadow-2xl flex items-center gap-1 select-none pointer-events-auto">
+      <div className="absolute top-3 right-[300px] z-[1000] bg-[#080d19]/95 backdrop-blur-xl p-1 rounded-lg border border-slate-800 shadow-2xl flex items-center gap-1 select-none pointer-events-auto">
         <button
           onClick={() => setMapMode('streets')}
-          className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-mono font-semibold transition ${
+          className={`flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-mono font-semibold transition ${
             mapMode === 'streets'
               ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-800/80 shadow'
               : 'text-slate-400 hover:text-slate-200'
           }`}
           title="Roads & Streets View"
         >
-          <Layers className="w-3.5 h-3.5" />
+          <Layers className="w-3 h-3" />
           <span>ROADS</span>
         </button>
 
         <button
           onClick={() => setMapMode('satellite')}
-          className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-mono font-semibold transition ${
+          className={`flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-mono font-semibold transition ${
             mapMode === 'satellite'
               ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-800/80 shadow'
               : 'text-slate-400 hover:text-slate-200'
           }`}
           title="Satellite Imagery"
         >
-          <Globe className="w-3.5 h-3.5" />
+          <Globe className="w-3 h-3" />
           <span>SATELLITE</span>
         </button>
       </div>
 
-      {/* Bottom Left Real Status Summary Cards */}
-      <div className="absolute bottom-5 left-5 z-[1000] flex items-center gap-2 pointer-events-auto select-none">
-        <div className="bg-[#090f1e]/90 backdrop-blur-xl px-3.5 py-2 rounded-lg border border-slate-800/90 shadow-2xl min-w-[75px]">
-          <div className="text-[9px] text-slate-500 uppercase tracking-wider font-mono font-semibold">VEHICLES</div>
-          <div className="text-lg font-bold font-mono text-cyan-400 leading-tight mt-0.5">{vehicles.length}</div>
+      {/* Bottom Left Unified Status HUD (Combined into single sleek card) */}
+      <div className="absolute bottom-4 left-4 z-[1000] bg-[#070d19]/90 backdrop-blur-xl px-3 py-1.5 rounded-lg border border-slate-800/90 shadow-2xl flex items-center gap-3 font-mono text-xs select-none pointer-events-auto">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+          <span className="text-[9.5px] text-slate-400 font-semibold uppercase">Vehicles</span>
+          <span className="text-white font-bold text-xs ml-0.5">{vehicles.length}</span>
         </div>
-        <div className="bg-[#090f1e]/90 backdrop-blur-xl px-3.5 py-2 rounded-lg border border-slate-800/90 shadow-2xl min-w-[75px]">
-          <div className="text-[9px] text-slate-500 uppercase tracking-wider font-mono font-semibold">GEOFENCES</div>
-          <div className="text-lg font-bold font-mono text-emerald-400 leading-tight mt-0.5">{geofences.length}</div>
+        <span className="text-slate-700">|</span>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span className="text-[9.5px] text-slate-400 font-semibold uppercase">Geofences</span>
+          <span className="text-white font-bold text-xs ml-0.5">{geofences.length}</span>
         </div>
       </div>
 
@@ -323,8 +385,8 @@ export const MapView: React.FC<MapViewProps> = ({
                 positions={drawingPoints}
                 pathOptions={{
                   color: '#f59e0b',
-                  weight: 3,
-                  dashArray: '6, 6',
+                  weight: 2.5,
+                  dashArray: '5, 5',
                   opacity: 0.95,
                 }}
               />
@@ -337,43 +399,44 @@ export const MapView: React.FC<MapViewProps> = ({
                 pathOptions={{
                   color: '#f59e0b',
                   fillColor: '#f59e0b',
-                  fillOpacity: 0.28,
+                  fillOpacity: 0.25,
                   weight: 2,
-                  dashArray: '6, 6',
+                  dashArray: '5, 5',
                 }}
               />
             )}
 
-            {/* Draw visible circular markers for every single selected point */}
-            {drawingPoints.map((pt, idx) => (
-              <CircleMarker
-                key={`drawing-pt-${idx}`}
-                center={pt}
-                radius={7}
-                pathOptions={{
-                  fillColor: idx === 0 ? '#10b981' : '#f59e0b',
-                  color: '#ffffff',
-                  weight: 2.5,
-                  fillOpacity: 1,
-                }}
-                eventHandlers={{
-                  click: () => {
-                    // Clicking on point 1 when >= 3 points completes the polygon
-                    if (idx === 0 && drawingPoints.length >= 3 && onFinishDrawing) {
-                      onFinishDrawing();
-                    }
-                  },
-                }}
-              >
-                <Tooltip permanent direction="top" offset={[0, -6]}>
-                  <div className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold shadow-lg text-white ${
-                    idx === 0 ? 'bg-emerald-600 border border-emerald-400' : 'bg-amber-600 border border-amber-400'
-                  }`}>
-                    {idx === 0 ? 'Start (P1)' : `P${idx + 1}`}
-                  </div>
-                </Tooltip>
-              </CircleMarker>
-            ))}
+            {/* Subtle tactical nodes for drawing vertices (no noisy repetitive labels) */}
+            {drawingPoints.map((pt, idx) => {
+              const isStart = idx === 0;
+              return (
+                <CircleMarker
+                  key={`drawing-pt-${idx}`}
+                  center={pt}
+                  radius={isStart ? 6 : 4.5}
+                  pathOptions={{
+                    fillColor: isStart ? '#10b981' : '#f59e0b',
+                    color: '#ffffff',
+                    weight: 2,
+                    fillOpacity: 1,
+                  }}
+                  eventHandlers={{
+                    click: () => {
+                      if (isStart && drawingPoints.length >= 3 && onFinishDrawing) {
+                        onFinishDrawing();
+                      }
+                    },
+                  }}
+                >
+                  {/* Tooltip on hover only for points to keep map clean; start point shows closure hint */}
+                  <Tooltip direction="top" offset={[0, -4]}>
+                    <div className="px-1.5 py-0.5 rounded text-[9.5px] font-mono font-bold bg-[#070c18]/95 border border-slate-700 text-slate-200">
+                      {isStart ? 'Start Point (Click to Close)' : `Point #${idx + 1}`}
+                    </div>
+                  </Tooltip>
+                </CircleMarker>
+              );
+            })}
           </>
         )}
 
@@ -432,7 +495,7 @@ export const MapView: React.FC<MapViewProps> = ({
               {/* Centroid Tag Marker showing Zone Name */}
               <CircleMarker
                 center={centroid}
-                radius={3.5}
+                radius={3}
                 pathOptions={{
                   fillColor: strokeColor,
                   color: '#ffffff',
@@ -456,23 +519,24 @@ export const MapView: React.FC<MapViewProps> = ({
         })}
 
         {/* ============================================================ */}
-        {/* REAL VEHICLE FLEET MARKERS ON MAP                           */}
+        {/* VEHICLE FLEET WITH PNG ICONS & HOVER-ONLY CALLOUTS           */}
         {/* ============================================================ */}
         {filteredVehicles
           .filter((v) => v.last_latitude != null && v.last_longitude != null)
           .map((v) => {
             const isSelected = selectedVehicle?.id === v.id;
+            const icon = getVehicleIcon(v.vehicle_type, isSelected);
 
             return (
               <React.Fragment key={v.id}>
-                {/* Glow ring for selected vehicle */}
+                {/* Glowing radar ring around the selected vehicle only */}
                 {isSelected && (
                   <CircleMarker
                     center={[v.last_latitude!, v.last_longitude!]}
-                    radius={16}
+                    radius={22}
                     pathOptions={{
                       color: '#06b6d4',
-                      fillOpacity: 0.18,
+                      fillOpacity: 0.15,
                       fillColor: '#06b6d4',
                       weight: 1.5,
                       dashArray: '3, 4',
@@ -480,35 +544,32 @@ export const MapView: React.FC<MapViewProps> = ({
                   />
                 )}
 
-                {/* Tactical Dot Marker */}
-                <CircleMarker
-                  center={[v.last_latitude!, v.last_longitude!]}
-                  radius={isSelected ? 6 : 5}
-                  pathOptions={{
-                    fillColor: isSelected ? '#22d3ee' : '#e2e8f0',
-                    color: isSelected ? '#0891b2' : '#475569',
-                    fillOpacity: 1,
-                    weight: 2,
-                  }}
+                {/* Vehicle Marker with dedicated PNG Icon */}
+                <Marker
+                  position={[v.last_latitude!, v.last_longitude!]}
+                  icon={icon}
                   eventHandlers={{
                     click: () => onSelectVehicle(v),
                   }}
                 >
-                  {/* Tactical callout box showing Vehicle Number */}
-                  <Tooltip permanent direction="bottom" offset={[0, 4]}>
+                  {/* Tooltip: Permanent callout ONLY for selected vehicle; hover-only for unselected vehicles */}
+                  <Tooltip
+                    permanent={isSelected}
+                    direction="top"
+                    offset={[0, isSelected ? -16 : -14]}
+                  >
                     <div
-                      onClick={() => onSelectVehicle(v)}
-                      className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shadow-2xl border cursor-pointer transition select-none flex items-center gap-1 ${
+                      className={`text-[9.5px] font-mono font-bold px-1.5 py-0.5 rounded shadow-xl border cursor-pointer transition select-none flex items-center gap-1 ${
                         isSelected
                           ? 'bg-[#042f2e]/95 text-cyan-300 border-cyan-500 ring-1 ring-cyan-400'
                           : 'bg-[#070c18]/90 text-slate-300 border-slate-700/80 hover:border-slate-500'
                       }`}
                     >
-                      {isSelected && <Navigation className="w-2.5 h-2.5 text-cyan-400 transform rotate-45 inline" />}
-                      <span>{v.vehicle_number}</span>
+                      <span className="uppercase">{v.vehicle_number}</span>
+                      <span className="text-[8px] text-slate-400 capitalize">({v.vehicle_type || 'truck'})</span>
                     </div>
                   </Tooltip>
-                </CircleMarker>
+                </Marker>
               </React.Fragment>
             );
           })}
