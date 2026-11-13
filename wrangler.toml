@@ -1,0 +1,8 @@
+name = "nightgrid"
+compatibility_date = "2024-11-01"
+main = "frontend/worker.ts"
+
+[assets]
+directory = "frontend/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
