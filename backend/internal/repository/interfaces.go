@@ -12,6 +12,8 @@ type GeofenceRepository interface {
 	GetAll(ctx context.Context, category string) ([]domain.Geofence, error)
 	GetByID(ctx context.Context, id string) (*domain.Geofence, error)
 	FindContainingGeofences(ctx context.Context, lat, lng float64) ([]domain.Geofence, error)
+	UpdateStatus(ctx context.Context, id string, status string) error
+	Delete(ctx context.Context, id string) error
 }
 
 type VehicleRepository interface {
@@ -19,11 +21,15 @@ type VehicleRepository interface {
 	GetAll(ctx context.Context) ([]domain.Vehicle, error)
 	GetByID(ctx context.Context, id string) (*domain.Vehicle, error)
 	UpdateLocation(ctx context.Context, id string, lat, lng float64, t time.Time) error
+	UpdateStatus(ctx context.Context, id string, status string) error
+	Delete(ctx context.Context, id string) error
 }
 
 type StateRepository interface {
 	GetActiveGeofences(ctx context.Context, vehicleID string) ([]string, error)
 	SetActiveGeofences(ctx context.Context, vehicleID string, geofenceIDs []string) error
+	DeleteVehicleState(ctx context.Context, vehicleID string) error
+	RemoveGeofenceFromAll(ctx context.Context, geofenceID string) error
 }
 
 type AlertRepository interface {

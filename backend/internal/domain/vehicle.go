@@ -22,6 +22,10 @@ type CreateVehicleRequest struct {
 	Phone         string `json:"phone" binding:"required"`
 }
 
+type UpdateVehicleStatusRequest struct {
+	Status string `json:"status" binding:"required,oneof=active inactive"`
+}
+
 type CreateVehicleResponse struct {
 	ID            string `json:"id"`
 	VehicleNumber string `json:"vehicle_number"`

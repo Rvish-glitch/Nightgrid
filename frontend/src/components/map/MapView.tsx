@@ -100,17 +100,17 @@ const mapTiles: Record<MapMode, { url: string; attribution: string; maxZoom: num
 // Helper to construct Leaflet custom vehicle icon
 const vehicleIconCache = new Map<string, L.DivIcon>();
 
-function getVehicleIcon(vehicleType: string, isSelected: boolean): L.DivIcon {
+function getVehicleIcon(vehicleType: string, isSelected: boolean, isInactive: boolean = false): L.DivIcon {
   const normType = (vehicleType || 'truck').toLowerCase();
   const validTypes = ['truck', 'van', 'bus', 'car', 'motorcycle'];
   const typeKey = validTypes.includes(normType) ? normType : 'truck';
-  const cacheKey = `${typeKey}_${isSelected ? 'sel' : 'norm'}`;
+  const cacheKey = `${typeKey}_${isSelected ? 'sel' : 'norm'}_${isInactive ? 'inact' : 'act'}`;
 
   if (vehicleIconCache.has(cacheKey)) {
     return vehicleIconCache.get(cacheKey)!;
   }
 
-  const iconUrl = isSelected ? `/vehicle-icons/${typeKey}_selected.png` : `/vehicle-icons/${typeKey}.png`;
+  const iconUrl = isSelected && !isInactive ? `/vehicle-icons/${typeKey}_selected.png` : `/vehicle-icons/${typeKey}.png`;
   const size = isSelected ? 42 : 36;
   const imgSize = isSelected ? 28 : 24;
 
@@ -125,8 +125,9 @@ function getVehicleIcon(vehicleType: string, isSelected: boolean): L.DivIcon {
         align-items: center;
         justify-content: center;
         cursor: pointer;
+        ${isInactive ? 'opacity: 0.6;' : ''}
       ">
-        ${isSelected ? `
+        ${isSelected && !isInactive ? `
           <div style="
             position: absolute;
             inset: -4px;
@@ -136,12 +137,20 @@ function getVehicleIcon(vehicleType: string, isSelected: boolean): L.DivIcon {
             animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
           "></div>
         ` : ''}
+        ${isInactive ? `
+          <div style="
+            position: absolute;
+            inset: -2px;
+            border-radius: 9999px;
+            border: 1.5px dashed #f59e0b;
+          "></div>
+        ` : ''}
         <div style="
           width: 100%;
           height: 100%;
           border-radius: 9999px;
-          background: ${isSelected ? '#083344' : '#0a1020'};
-          border: 2px solid ${isSelected ? '#22d3ee' : '#475569'};
+          background: ${isInactive ? '#1e1b18' : isSelected ? '#083344' : '#0a1020'};
+          border: 2px solid ${isInactive ? '#d97706' : isSelected ? '#22d3ee' : '#475569'};
           box-shadow: 0 4px 12px rgba(0,0,0,0.7);
           display: flex;
           align-items: center;
@@ -155,7 +164,7 @@ function getVehicleIcon(vehicleType: string, isSelected: boolean): L.DivIcon {
               width: ${imgSize}px;
               height: ${imgSize}px;
               object-fit: contain;
-              filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
+              filter: ${isInactive ? 'grayscale(80%) drop-shadow(0 2px 4px rgba(0,0,0,0.6))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.6))'};
             "
           />
         </div>
@@ -492,6 +501,7 @@ export const MapView: React.FC<MapViewProps> = ({
           const centroid = getPolygonCentroid(geo.coordinates);
           const isRestricted = geo.category === 'restricted_zone';
           const isToll = geo.category === 'toll_zone';
+          const isInactive = geo.status === 'inactive';
 
           const handleClick = (e: any) => {
             const lat = parseFloat(e.latlng.lat.toFixed(6));
@@ -503,8 +513,8 @@ export const MapView: React.FC<MapViewProps> = ({
             }
           };
 
-          const strokeColor = isRestricted ? '#f43f5e' : isToll ? '#f59e0b' : color.stroke;
-          const fillColor = isRestricted ? '#f43f5e' : isToll ? '#f59e0b' : color.fill;
+          const strokeColor = isInactive ? '#64748b' : isRestricted ? '#f43f5e' : isToll ? '#f59e0b' : color.stroke;
+          const fillColor = isInactive ? '#334155' : isRestricted ? '#f43f5e' : isToll ? '#f59e0b' : color.fill;
 
           return (
             <React.Fragment key={geo.id}>
@@ -514,9 +524,9 @@ export const MapView: React.FC<MapViewProps> = ({
                 pathOptions={{
                   color: strokeColor,
                   fillColor: fillColor,
-                  fillOpacity: isRestricted ? 0.35 : 0.22,
-                  weight: isRestricted ? 2.5 : 2,
-                  dashArray: isRestricted ? '6, 6' : undefined,
+                  fillOpacity: isInactive ? 0.08 : isRestricted ? 0.35 : 0.22,
+                  weight: isInactive ? 1.5 : isRestricted ? 2.5 : 2,
+                  dashArray: isInactive ? '8, 8' : isRestricted ? '6, 6' : undefined,
                 }}
                 eventHandlers={{ click: handleClick }}
               >
@@ -524,13 +534,22 @@ export const MapView: React.FC<MapViewProps> = ({
                   <div className="p-1.5 text-slate-100 text-xs font-mono bg-[#070c18]/95 border border-slate-700 rounded shadow-xl">
                     <div className="font-bold flex items-center gap-1.5">
                       {isRestricted && <ShieldAlert className="w-3.5 h-3.5 text-rose-500 inline" />}
-                      <span className={isRestricted ? 'text-rose-300' : 'text-cyan-300'}>{geo.name}</span>
+                      <span className={isInactive ? 'text-slate-400 line-through' : isRestricted ? 'text-rose-300' : 'text-cyan-300'}>{geo.name}</span>
+                      {isInactive && (
+                        <span className="text-[9px] px-1 py-0.2 rounded bg-amber-950/80 border border-amber-600 text-amber-300 uppercase font-bold">
+                          Inactive
+                        </span>
+                      )}
                     </div>
                     <div className="text-[10px] text-slate-400 uppercase mt-0.5">
                       {geo.category.replace('_', ' ')} · Polygon ({geo.coordinates.length > 1 ? geo.coordinates.length - 1 : geo.coordinates.length} vertices)
                     </div>
-                    <div className="text-[10px] text-emerald-400 font-semibold mt-1">
-                      Click inside to deploy selected vehicle
+                    <div className="text-[10px] font-semibold mt-1">
+                      {isInactive ? (
+                        <span className="text-amber-400/90">Zone Deactivated · Tracking ignored</span>
+                      ) : (
+                        <span className="text-emerald-400">Click inside to deploy selected vehicle</span>
+                      )}
                     </div>
                   </div>
                 </Tooltip>
@@ -543,18 +562,20 @@ export const MapView: React.FC<MapViewProps> = ({
                 pathOptions={{
                   fillColor: strokeColor,
                   color: '#ffffff',
-                  fillOpacity: 1,
+                  fillOpacity: isInactive ? 0.5 : 1,
                   weight: 1.5,
                 }}
                 eventHandlers={{ click: handleClick }}
               >
                 <Tooltip permanent direction="bottom" offset={[0, 4]}>
                   <div className={`text-[9px] font-mono font-bold tracking-wider px-1.5 py-0.5 rounded shadow-lg border uppercase ${
-                    isRestricted
+                    isInactive
+                      ? 'bg-slate-900/90 text-slate-400 border-slate-700'
+                      : isRestricted
                       ? 'bg-rose-950/90 text-rose-300 border-rose-800'
                       : 'bg-[#070c18]/90 text-slate-300 border-slate-700'
                   }`}>
-                    {geo.name}
+                    {geo.name} {isInactive ? '(OFF)' : ''}
                   </div>
                 </Tooltip>
               </CircleMarker>
@@ -569,7 +590,8 @@ export const MapView: React.FC<MapViewProps> = ({
           .filter((v) => v.last_latitude != null && v.last_longitude != null)
           .map((v) => {
             const isSelected = selectedVehicle?.id === v.id;
-            const icon = getVehicleIcon(v.vehicle_type, isSelected);
+            const isInactive = v.status === 'inactive';
+            const icon = getVehicleIcon(v.vehicle_type, isSelected, isInactive);
 
             return (
               <React.Fragment key={v.id}>
@@ -591,11 +613,15 @@ export const MapView: React.FC<MapViewProps> = ({
                       className={`text-[9.5px] font-mono font-bold px-1.5 py-0.5 rounded shadow-xl border cursor-pointer transition select-none flex items-center gap-1 ${
                         isSelected
                           ? 'bg-[#042f2e]/95 text-cyan-300 border-cyan-500 ring-1 ring-cyan-400'
+                          : isInactive
+                          ? 'bg-slate-900/90 text-amber-300 border-amber-800/80 hover:border-amber-600'
                           : 'bg-[#070c18]/90 text-slate-300 border-slate-700/80 hover:border-slate-500'
                       }`}
                     >
                       <span className="uppercase">{v.vehicle_number}</span>
-                      <span className="text-[8px] text-slate-400 capitalize">({v.vehicle_type || 'truck'})</span>
+                      <span className="text-[8px] text-slate-400 capitalize">
+                        {isInactive ? '(Paused)' : `(${v.vehicle_type || 'truck'})`}
+                      </span>
                     </div>
                   </Tooltip>
                 </Marker>

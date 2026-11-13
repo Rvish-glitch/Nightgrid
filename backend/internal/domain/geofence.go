@@ -26,7 +26,12 @@ type Geofence struct {
 	Description string           `json:"description,omitempty"`
 	Coordinates [][2]float64     `json:"coordinates"` // [lat, lng]
 	Category    GeofenceCategory `json:"category"`
+	Status      string           `json:"status"` // "active" or "inactive"
 	CreatedAt   time.Time        `json:"created_at"`
+}
+
+type UpdateGeofenceStatusRequest struct {
+	Status string `json:"status" binding:"required,oneof=active inactive"`
 }
 
 type CreateGeofenceRequest struct {

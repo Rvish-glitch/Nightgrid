@@ -30,10 +30,14 @@ func SetupRouter(cfg RouterConfig) *gin.Engine {
 	// 1 & 2. Geofence Endpoints
 	r.POST("/geofences", cfg.GeofenceHandler.CreateGeofence)
 	r.GET("/geofences", cfg.GeofenceHandler.ListGeofences)
+	r.PATCH("/geofences/:id/status", cfg.GeofenceHandler.UpdateStatus)
+	r.DELETE("/geofences/:id", cfg.GeofenceHandler.DeleteGeofence)
 
 	// 3 & 4. Vehicle Endpoints
 	r.POST("/vehicles", cfg.VehicleHandler.CreateVehicle)
 	r.GET("/vehicles", cfg.VehicleHandler.ListVehicles)
+	r.PATCH("/vehicles/:id/status", cfg.VehicleHandler.UpdateStatus)
+	r.DELETE("/vehicles/:id", cfg.VehicleHandler.DeleteVehicle)
 
 	// 5 & 6. Location Tracking Endpoints
 	r.POST("/vehicles/location", cfg.LocationHandler.UpdateLocation)

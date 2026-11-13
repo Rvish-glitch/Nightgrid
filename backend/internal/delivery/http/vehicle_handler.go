@@ -53,3 +53,50 @@ func (h *VehicleHandler) ListVehicles(c *gin.Context) {
 		TimeNS:   CalculateElapsedNS(c),
 	})
 }
+
+// PATCH /vehicles/:id/status - Update vehicle status (active or inactive)
+func (h *VehicleHandler) UpdateStatus(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		HandleError(c, errors.NewValidationError("vehicle id is required"))
+		return
+	}
+
+	var req domain.UpdateVehicleStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		HandleError(c, errors.NewValidationError(err.Error()))
+		return
+	}
+
+	if err := h.useCase.UpdateStatus(c.Request.Context(), id, req.Status); err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":      id,
+		"status":  req.Status,
+		"message": "vehicle status updated successfully",
+		"time_ns": CalculateElapsedNS(c),
+	})
+}
+
+// DELETE /vehicles/:id - Remove a vehicle from fleet
+func (h *VehicleHandler) DeleteVehicle(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		HandleError(c, errors.NewValidationError("vehicle id is required"))
+		return
+	}
+
+	if err := h.useCase.DeleteVehicle(c.Request.Context(), id); err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":      id,
+		"message": "vehicle deleted successfully",
+		"time_ns": CalculateElapsedNS(c),
+	})
+}

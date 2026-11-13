@@ -28,6 +28,9 @@ func NewMemoryGeofenceRepository() *MemoryGeofenceRepository {
 func (r *MemoryGeofenceRepository) Create(ctx context.Context, g *domain.Geofence) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if g.Status == "" {
+		g.Status = "active"
+	}
 	r.geofences[g.ID] = *g
 	return nil
 }
@@ -68,11 +71,38 @@ func (r *MemoryGeofenceRepository) FindContainingGeofences(ctx context.Context, 
 	pt := [2]float64{lat, lng}
 
 	for _, g := range r.geofences {
+		if g.Status == "inactive" {
+			continue
+		}
 		if geo.PointInPolygon(pt, g.Coordinates) {
 			matched = append(matched, g)
 		}
 	}
 	return matched, nil
+}
+
+func (r *MemoryGeofenceRepository) UpdateStatus(ctx context.Context, id string, status string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	g, ok := r.geofences[id]
+	if !ok {
+		return errors.NewNotFoundError("geofence not found")
+	}
+	g.Status = status
+	r.geofences[id] = g
+	return nil
+}
+
+func (r *MemoryGeofenceRepository) Delete(ctx context.Context, id string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, ok := r.geofences[id]; !ok {
+		return errors.NewNotFoundError("geofence not found")
+	}
+	delete(r.geofences, id)
+	return nil
 }
 
 // ================= Vehicle Repository =================
@@ -146,6 +176,34 @@ func (r *MemoryVehicleRepository) UpdateLocation(ctx context.Context, id string,
 	return nil
 }
 
+func (r *MemoryVehicleRepository) UpdateStatus(ctx context.Context, id string, status string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	v, ok := r.vehicles[id]
+	if !ok {
+		return errors.NewNotFoundError("vehicle not found")
+	}
+
+	v.Status = status
+	r.vehicles[id] = v
+	return nil
+}
+
+func (r *MemoryVehicleRepository) Delete(ctx context.Context, id string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	v, ok := r.vehicles[id]
+	if !ok {
+		return errors.NewNotFoundError("vehicle not found")
+	}
+
+	delete(r.vehNumbers, strings.ToUpper(v.VehicleNumber))
+	delete(r.vehicles, id)
+	return nil
+}
+
 // ================= State Repository =================
 
 type MemoryStateRepository struct {
@@ -184,6 +242,22 @@ func (r *MemoryStateRepository) SetActiveGeofences(ctx context.Context, vehicleI
 		newSet[gid] = true
 	}
 	r.states[vehicleID] = newSet
+	return nil
+}
+
+func (r *MemoryStateRepository) DeleteVehicleState(ctx context.Context, vehicleID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.states, vehicleID)
+	return nil
+}
+
+func (r *MemoryStateRepository) RemoveGeofenceFromAll(ctx context.Context, geofenceID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, set := range r.states {
+		delete(set, geofenceID)
+	}
 	return nil
 }
 

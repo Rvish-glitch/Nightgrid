@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Geofence, Vehicle, GeofenceCategory } from './types';
-import { getGeofences, getVehicles, updateVehicleLocation } from './api/client';
+import {
+  getGeofences,
+  getVehicles,
+  updateVehicleLocation,
+  updateVehicleStatus,
+  deleteVehicle,
+  updateGeofenceStatus,
+  deleteGeofence,
+} from './api/client';
 import { useWebSocket } from './hooks/useWebSocket';
 
 import { MapView } from './components/map/MapView';
@@ -123,6 +131,58 @@ export const App: React.FC = () => {
     handleMapClick(37.7950, -122.4000);
   };
 
+  // Toggle vehicle active/inactive status
+  const handleToggleVehicleStatus = async (vehicleId: string, currentStatus: string) => {
+    const nextStatus = currentStatus === 'inactive' ? 'active' : 'inactive';
+    try {
+      await updateVehicleStatus(vehicleId, nextStatus);
+      setVehicles((prev) =>
+        prev.map((v) => (v.id === vehicleId ? { ...v, status: nextStatus } : v))
+      );
+      if (selectedVehicle?.id === vehicleId) {
+        setSelectedVehicle((prev) => (prev ? { ...prev, status: nextStatus } : null));
+      }
+    } catch (err) {
+      console.error('Failed to toggle vehicle status:', err);
+    }
+  };
+
+  // Delete vehicle
+  const handleDeleteVehicle = async (vehicleId: string) => {
+    try {
+      await deleteVehicle(vehicleId);
+      setVehicles((prev) => prev.filter((v) => v.id !== vehicleId));
+      if (selectedVehicle?.id === vehicleId) {
+        setSelectedVehicle(null);
+      }
+    } catch (err) {
+      console.error('Failed to delete vehicle:', err);
+    }
+  };
+
+  // Toggle geofence active/inactive status
+  const handleToggleGeofenceStatus = async (geofenceId: string, currentStatus?: string) => {
+    const nextStatus = currentStatus === 'inactive' ? 'active' : 'inactive';
+    try {
+      await updateGeofenceStatus(geofenceId, nextStatus);
+      setGeofences((prev) =>
+        prev.map((g) => (g.id === geofenceId ? { ...g, status: nextStatus } : g))
+      );
+    } catch (err) {
+      console.error('Failed to toggle geofence status:', err);
+    }
+  };
+
+  // Delete geofence
+  const handleDeleteGeofence = async (geofenceId: string) => {
+    try {
+      await deleteGeofence(geofenceId);
+      setGeofences((prev) => prev.filter((g) => g.id !== geofenceId));
+    } catch (err) {
+      console.error('Failed to delete geofence:', err);
+    }
+  };
+
   return (
     <div className="h-screen w-screen bg-[#050811] text-slate-100 flex flex-col overflow-hidden select-none">
       {/* Real-time Alert Toast Notification */}
@@ -194,6 +254,8 @@ export const App: React.FC = () => {
               currentGeofences={currentEnclosingGeofences}
               onOpenHistory={() => setIsHistoryOpen(true)}
               onSimulateMove={handleSimulateMove}
+              onToggleStatus={handleToggleVehicleStatus}
+              onDeleteVehicle={handleDeleteVehicle}
             />
           </div>
 
@@ -223,6 +285,8 @@ export const App: React.FC = () => {
                       setSelectedVehicle(v);
                       setActiveNavTab('map');
                     }}
+                    onToggleStatus={handleToggleVehicleStatus}
+                    onDeleteVehicle={handleDeleteVehicle}
                   />
                 )}
 
@@ -231,6 +295,8 @@ export const App: React.FC = () => {
                     geofences={geofences}
                     selectedCategory={categoryFilter}
                     onFilterChange={setCategoryFilter}
+                    onToggleStatus={handleToggleGeofenceStatus}
+                    onDeleteGeofence={handleDeleteGeofence}
                   />
                 )}
 

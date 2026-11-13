@@ -49,6 +49,30 @@ export async function getGeofences(category?: GeofenceCategory): Promise<{
   return request(`/geofences${query}`);
 }
 
+// 2.1 PATCH /geofences/:id/status
+export async function updateGeofenceStatus(geofenceId: string, status: 'active' | 'inactive'): Promise<{
+  id: string;
+  status: string;
+  message: string;
+  time_ns: string;
+}> {
+  return request(`/geofences/${geofenceId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
+// 2.2 DELETE /geofences/:id
+export async function deleteGeofence(geofenceId: string): Promise<{
+  id: string;
+  message: string;
+  time_ns: string;
+}> {
+  return request(`/geofences/${geofenceId}`, {
+    method: 'DELETE',
+  });
+}
+
 // 3. POST /vehicles
 export async function createVehicle(payload: {
   vehicle_number: string;
@@ -59,6 +83,30 @@ export async function createVehicle(payload: {
   return request('/vehicles', {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+}
+
+// 3.1 PATCH /vehicles/:id/status
+export async function updateVehicleStatus(vehicleId: string, status: 'active' | 'inactive'): Promise<{
+  id: string;
+  status: string;
+  message: string;
+  time_ns: string;
+}> {
+  return request(`/vehicles/${vehicleId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
+// 3.2 DELETE /vehicles/:id
+export async function deleteVehicle(vehicleId: string): Promise<{
+  id: string;
+  message: string;
+  time_ns: string;
+}> {
+  return request(`/vehicles/${vehicleId}`, {
+    method: 'DELETE',
   });
 }
 

@@ -1,12 +1,14 @@
 import React from 'react';
 import { Vehicle } from '../../types';
-import { ShieldAlert, ShieldCheck, History, Send } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, History, Send, Play, Pause, Trash2 } from 'lucide-react';
 
 interface UnitDetailPanelProps {
   vehicle: Vehicle | null;
   currentGeofences: string[];
   onOpenHistory: () => void;
   onSimulateMove: () => void;
+  onToggleStatus?: (vehicleId: string, currentStatus: string) => void;
+  onDeleteVehicle?: (vehicleId: string) => void;
 }
 
 export const UnitDetailPanel: React.FC<UnitDetailPanelProps> = ({
@@ -14,6 +16,8 @@ export const UnitDetailPanel: React.FC<UnitDetailPanelProps> = ({
   currentGeofences,
   onOpenHistory,
   onSimulateMove,
+  onToggleStatus,
+  onDeleteVehicle,
 }) => {
   if (!vehicle) {
     return (
@@ -24,21 +28,29 @@ export const UnitDetailPanel: React.FC<UnitDetailPanelProps> = ({
     );
   }
 
-  const isRestricted = currentGeofences.some((g) => g.toLowerCase().includes('restricted'));
-  const isInsideAny = currentGeofences.length > 0;
+  const isInactive = vehicle.status === 'inactive';
+  const isRestricted = !isInactive && currentGeofences.some((g) => g.toLowerCase().includes('restricted'));
+  const isInsideAny = !isInactive && currentGeofences.length > 0;
 
   // Icon path based on vehicle type
   const vType = (vehicle.vehicle_type || 'truck').toLowerCase();
   const iconSrc = `/vehicle-icons/${vType}_selected.png`;
 
   return (
-    <div className="w-[275px] bg-[#070c18]/95 backdrop-blur-2xl border border-slate-800/90 rounded-xl p-3.5 font-mono shadow-2xl text-slate-200 pointer-events-auto select-none">
+    <div className={`w-[275px] bg-[#070c18]/95 backdrop-blur-2xl border rounded-xl p-3.5 font-mono shadow-2xl pointer-events-auto select-none transition-all ${
+      isInactive ? 'border-amber-900/60 opacity-90' : 'border-slate-800/90'
+    } text-slate-200`}>
       {/* Vehicle Header with Integrated Status Badge */}
       <div className="pb-2.5 border-b border-slate-800/80">
         <div className="flex items-center justify-between">
           <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">SELECTED UNIT</span>
           {/* Integrated Status Badge */}
-          {isRestricted ? (
+          {isInactive ? (
+            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-950/80 border border-amber-600 text-amber-300 text-[9px] font-bold tracking-wider uppercase">
+              <Pause className="w-2.5 h-2.5 text-amber-400" />
+              <span>PAUSED</span>
+            </div>
+          ) : isRestricted ? (
             <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-950/80 border border-rose-600 text-rose-300 text-[9px] font-bold tracking-wider uppercase animate-pulse">
               <ShieldAlert className="w-2.5 h-2.5 text-rose-400" />
               <span>RESTRICTED</span>
@@ -59,7 +71,11 @@ export const UnitDetailPanel: React.FC<UnitDetailPanelProps> = ({
           <img
             src={iconSrc}
             alt={vType}
-            className="w-8 h-8 rounded-full border border-cyan-500/60 p-0.5 bg-cyan-950/40 shrink-0"
+            className={`w-8 h-8 rounded-full border p-0.5 shrink-0 ${
+              isInactive
+                ? 'border-amber-600/60 bg-amber-950/40 opacity-70 grayscale'
+                : 'border-cyan-500/60 bg-cyan-950/40'
+            }`}
             onError={(e) => {
               (e.target as HTMLImageElement).src = '/vehicle-icons/truck_selected.png';
             }}
@@ -69,7 +85,7 @@ export const UnitDetailPanel: React.FC<UnitDetailPanelProps> = ({
               {vehicle.vehicle_number}
             </h2>
             <div className="text-[10px] text-cyan-400/90 font-sans capitalize -mt-0.5">
-              {vType} Fleet Unit
+              {vType} Fleet Unit {isInactive && <span className="text-amber-400 font-bold">(Inactive)</span>}
             </div>
           </div>
         </div>
@@ -115,7 +131,9 @@ export const UnitDetailPanel: React.FC<UnitDetailPanelProps> = ({
       <div className="space-y-1.5 text-xs py-1">
         <div className="flex items-center justify-between">
           <span className="text-slate-500 text-[10px]">Active Zone</span>
-          {currentGeofences.length > 0 ? (
+          {isInactive ? (
+            <span className="text-amber-400 italic text-[10px] font-bold">Tracking Paused</span>
+          ) : currentGeofences.length > 0 ? (
             <span
               className={`px-1.5 py-0.5 rounded text-[9.5px] font-bold tracking-tight flex items-center gap-1 ${
                 isRestricted
@@ -140,11 +158,12 @@ export const UnitDetailPanel: React.FC<UnitDetailPanelProps> = ({
       </div>
 
       {/* Action Buttons: Test Restricted Entry & History */}
-      <div className="grid grid-cols-2 gap-1.5 mt-2.5 pt-2 border-t border-slate-800/80">
+      <div className="grid grid-cols-2 gap-1.5 mt-2 pt-2 border-t border-slate-800/80">
         <button
           onClick={onSimulateMove}
-          title="Simulate entering Waterfront Restricted Port"
-          className="py-1.5 px-2 rounded-md bg-[#0a2730] hover:bg-[#0e3644] text-cyan-300 border border-cyan-600/60 text-[10px] font-bold uppercase tracking-wider transition flex items-center justify-center gap-1 shadow active:scale-95"
+          disabled={isInactive}
+          title={isInactive ? 'Resume tracking first to test' : 'Simulate entering Waterfront Restricted Port'}
+          className="py-1.5 px-2 rounded-md bg-[#0a2730] hover:bg-[#0e3644] disabled:opacity-40 text-cyan-300 border border-cyan-600/60 text-[10px] font-bold uppercase tracking-wider transition flex items-center justify-center gap-1 shadow active:scale-95"
         >
           <Send className="w-2.5 h-2.5" />
           <span>Test Entry</span>
@@ -156,6 +175,35 @@ export const UnitDetailPanel: React.FC<UnitDetailPanelProps> = ({
         >
           <History className="w-2.5 h-2.5" />
           <span>Violations</span>
+        </button>
+      </div>
+
+      {/* Lifecycle Actions: Pause/Resume Tracking & Delete Vehicle */}
+      <div className="grid grid-cols-2 gap-1.5 mt-1.5">
+        <button
+          onClick={() => onToggleStatus && onToggleStatus(vehicle.id, vehicle.status)}
+          className={`py-1.5 px-2 rounded-md border text-[10px] font-bold uppercase tracking-wider transition flex items-center justify-center gap-1 shadow active:scale-95 ${
+            isInactive
+              ? 'bg-emerald-950/70 hover:bg-emerald-900/80 text-emerald-300 border-emerald-600/60'
+              : 'bg-amber-950/70 hover:bg-amber-900/80 text-amber-300 border-amber-600/60'
+          }`}
+          title={isInactive ? 'Resume tracking for this vehicle' : 'Pause tracking for this vehicle'}
+        >
+          {isInactive ? <Play className="w-2.5 h-2.5" /> : <Pause className="w-2.5 h-2.5" />}
+          <span>{isInactive ? 'Resume' : 'Pause'}</span>
+        </button>
+
+        <button
+          onClick={() => {
+            if (window.confirm(`Are you sure you want to remove vehicle ${vehicle.vehicle_number} from the fleet?`)) {
+              onDeleteVehicle && onDeleteVehicle(vehicle.id);
+            }
+          }}
+          className="py-1.5 px-2 rounded-md bg-rose-950/60 hover:bg-rose-900/70 text-rose-300 border border-rose-700/60 text-[10px] font-bold uppercase tracking-wider transition flex items-center justify-center gap-1 shadow active:scale-95"
+          title="Delete vehicle from fleet"
+        >
+          <Trash2 className="w-2.5 h-2.5" />
+          <span>Delete</span>
         </button>
       </div>
     </div>

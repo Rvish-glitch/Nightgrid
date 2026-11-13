@@ -55,3 +55,50 @@ func (h *GeofenceHandler) ListGeofences(c *gin.Context) {
 		TimeNS:    CalculateElapsedNS(c),
 	})
 }
+
+// PATCH /geofences/:id/status - Update geofence status (active or inactive)
+func (h *GeofenceHandler) UpdateStatus(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		HandleError(c, errors.NewValidationError("geofence id is required"))
+		return
+	}
+
+	var req domain.UpdateGeofenceStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		HandleError(c, errors.NewValidationError(err.Error()))
+		return
+	}
+
+	if err := h.useCase.UpdateStatus(c.Request.Context(), id, req.Status); err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":      id,
+		"status":  req.Status,
+		"message": "geofence status updated successfully",
+		"time_ns": CalculateElapsedNS(c),
+	})
+}
+
+// DELETE /geofences/:id - Remove a geofence zone
+func (h *GeofenceHandler) DeleteGeofence(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		HandleError(c, errors.NewValidationError("geofence id is required"))
+		return
+	}
+
+	if err := h.useCase.DeleteGeofence(c.Request.Context(), id); err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":      id,
+		"message": "geofence deleted successfully",
+		"time_ns": CalculateElapsedNS(c),
+	})
+}

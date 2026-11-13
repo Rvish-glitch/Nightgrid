@@ -19,6 +19,7 @@ export interface Geofence {
   description?: string;
   coordinates: [number, number][]; // [lat, lng]
   category: GeofenceCategory;
+  status?: 'active' | 'inactive';
   created_at: string;
 }
 

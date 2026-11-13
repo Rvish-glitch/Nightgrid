@@ -55,3 +55,19 @@ func (u *GeofenceUseCase) ListGeofences(ctx context.Context, category string) ([
 	return u.repo.GetAll(ctx, category)
 }
 
+func (u *GeofenceUseCase) GetGeofence(ctx context.Context, id string) (*domain.Geofence, error) {
+	return u.repo.GetByID(ctx, id)
+}
+
+func (u *GeofenceUseCase) UpdateStatus(ctx context.Context, id string, status string) error {
+	status = strings.ToLower(strings.TrimSpace(status))
+	if status != "active" && status != "inactive" {
+		return errors.NewValidationError("status must be active or inactive")
+	}
+	return u.repo.UpdateStatus(ctx, id, status)
+}
+
+func (u *GeofenceUseCase) DeleteGeofence(ctx context.Context, id string) error {
+	return u.repo.Delete(ctx, id)
+}
+

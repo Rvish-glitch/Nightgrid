@@ -58,3 +58,15 @@ func (u *VehicleUseCase) ListVehicles(ctx context.Context) ([]domain.Vehicle, er
 func (u *VehicleUseCase) GetVehicle(ctx context.Context, id string) (*domain.Vehicle, error) {
 	return u.repo.GetByID(ctx, id)
 }
+
+func (u *VehicleUseCase) UpdateStatus(ctx context.Context, id string, status string) error {
+	status = strings.ToLower(strings.TrimSpace(status))
+	if status != "active" && status != "inactive" {
+		return errors.NewValidationError("status must be active or inactive")
+	}
+	return u.repo.UpdateStatus(ctx, id, status)
+}
+
+func (u *VehicleUseCase) DeleteVehicle(ctx context.Context, id string) error {
+	return u.repo.Delete(ctx, id)
+}

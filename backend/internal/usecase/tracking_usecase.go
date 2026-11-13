@@ -59,7 +59,13 @@ func (u *TrackingUseCase) UpdateLocation(ctx context.Context, req domain.UpdateL
 		timestamp = time.Now().UTC()
 	}
 
-	// 2. Evaluate Point-in-Polygon for all geofences
+	// If vehicle is inactive, update its location coordinates but bypass geofence breach evaluation and alerts
+	if vehicle.Status == "inactive" {
+		_ = u.vehRepo.UpdateLocation(ctx, vehicle.ID, req.Latitude, req.Longitude, timestamp)
+		return []domain.CurrentGeofenceInfo{}, nil
+	}
+
+	// 2. Evaluate Point-in-Polygon for all active geofences
 	currentGeofences, err := u.geoRepo.FindContainingGeofences(ctx, req.Latitude, req.Longitude)
 	if err != nil {
 		return nil, fmt.Errorf("failed to evaluate spatial geofences: %w", err)
