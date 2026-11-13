@@ -29,7 +29,7 @@ export const UnitDetailPanel: React.FC<UnitDetailPanelProps> = ({
 
   // Icon path based on vehicle type
   const vType = (vehicle.vehicle_type || 'truck').toLowerCase();
-  const iconSrc = `/vehicles/${vType}_selected.png`;
+  const iconSrc = `/vehicle-icons/${vType}_selected.png`;
 
   return (
     <div className="w-[275px] bg-[#070c18]/95 backdrop-blur-2xl border border-slate-800/90 rounded-xl p-3.5 font-mono shadow-2xl text-slate-200 pointer-events-auto select-none">
@@ -61,7 +61,7 @@ export const UnitDetailPanel: React.FC<UnitDetailPanelProps> = ({
             alt={vType}
             className="w-8 h-8 rounded-full border border-cyan-500/60 p-0.5 bg-cyan-950/40 shrink-0"
             onError={(e) => {
-              (e.target as HTMLImageElement).src = '/vehicles/truck_selected.png';
+              (e.target as HTMLImageElement).src = '/vehicle-icons/truck_selected.png';
             }}
           />
           <div className="min-w-0 flex-1">

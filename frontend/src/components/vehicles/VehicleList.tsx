@@ -47,7 +47,14 @@ export const VehicleList: React.FC<VehicleListProps> = ({
               >
                 <div className="flex items-center justify-between font-semibold">
                   <div className="flex items-center gap-2">
-                    <Navigation className={`w-4 h-4 ${isSelected ? 'text-cyan-400' : 'text-slate-400'}`} />
+                    <img
+                      src={`/vehicle-icons/${(v.vehicle_type || 'truck').toLowerCase()}${isSelected ? '_selected' : ''}.png`}
+                      alt={v.vehicle_type}
+                      className="w-5 h-5 object-contain"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/vehicle-icons/truck.png';
+                      }}
+                    />
                     <span className="font-mono text-sm tracking-wide">{v.vehicle_number}</span>
                   </div>
                   {isSelected && (

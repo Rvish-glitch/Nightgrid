@@ -13,6 +13,11 @@ export default defineConfig({
       '/vehicles': {
         target: 'http://127.0.0.1:8080',
         changeOrigin: true,
+        bypass: (req) => {
+          if (req.url && /\.(png|jpg|jpeg|gif|svg|ico|webp)$/i.test(req.url)) {
+            return req.url;
+          }
+        },
       },
       '/alerts': {
         target: 'http://127.0.0.1:8080',

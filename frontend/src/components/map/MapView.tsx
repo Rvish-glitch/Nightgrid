@@ -98,9 +98,9 @@ const mapTiles: Record<MapMode, { url: string; attribution: string; maxZoom: num
 };
 
 // Helper to construct Leaflet custom vehicle icon
-const vehicleIconCache = new Map<string, L.Icon>();
+const vehicleIconCache = new Map<string, L.DivIcon>();
 
-function getVehicleIcon(vehicleType: string, isSelected: boolean): L.Icon {
+function getVehicleIcon(vehicleType: string, isSelected: boolean): L.DivIcon {
   const normType = (vehicleType || 'truck').toLowerCase();
   const validTypes = ['truck', 'van', 'bus', 'car', 'motorcycle'];
   const typeKey = validTypes.includes(normType) ? normType : 'truck';
@@ -110,16 +110,60 @@ function getVehicleIcon(vehicleType: string, isSelected: boolean): L.Icon {
     return vehicleIconCache.get(cacheKey)!;
   }
 
-  const iconUrl = isSelected ? `/vehicles/${typeKey}_selected.png` : `/vehicles/${typeKey}.png`;
-  const iconSize: [number, number] = isSelected ? [36, 36] : [30, 30];
-  const iconAnchor: [number, number] = isSelected ? [18, 18] : [15, 15];
+  const iconUrl = isSelected ? `/vehicle-icons/${typeKey}_selected.png` : `/vehicle-icons/${typeKey}.png`;
+  const size = isSelected ? 42 : 36;
+  const imgSize = isSelected ? 28 : 24;
 
-  const icon = L.icon({
-    iconUrl,
-    iconSize,
-    iconAnchor,
-    popupAnchor: [0, -16],
-    className: isSelected ? 'vehicle-icon-selected' : 'vehicle-icon-normal',
+  const icon = L.divIcon({
+    className: '!bg-transparent !border-none',
+    html: `
+      <div style="
+        position: relative;
+        width: ${size}px;
+        height: ${size}px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+      ">
+        ${isSelected ? `
+          <div style="
+            position: absolute;
+            inset: -4px;
+            border-radius: 9999px;
+            border: 2px dashed #06b6d4;
+            background: rgba(6, 182, 212, 0.2);
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+          "></div>
+        ` : ''}
+        <div style="
+          width: 100%;
+          height: 100%;
+          border-radius: 9999px;
+          background: ${isSelected ? '#083344' : '#0a1020'};
+          border: 2px solid ${isSelected ? '#22d3ee' : '#475569'};
+          box-shadow: 0 4px 12px rgba(0,0,0,0.7);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+        ">
+          <img
+            src="${iconUrl}"
+            alt="${typeKey}"
+            style="
+              width: ${imgSize}px;
+              height: ${imgSize}px;
+              object-fit: contain;
+              filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
+            "
+          />
+        </div>
+      </div>
+    `,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    popupAnchor: [0, -size / 2],
   });
 
   vehicleIconCache.set(cacheKey, icon);
@@ -556,7 +600,7 @@ export const MapView: React.FC<MapViewProps> = ({
                   <Tooltip
                     permanent={isSelected}
                     direction="top"
-                    offset={[0, isSelected ? -16 : -14]}
+                    offset={[0, isSelected ? -22 : -18]}
                   >
                     <div
                       className={`text-[9.5px] font-mono font-bold px-1.5 py-0.5 rounded shadow-xl border cursor-pointer transition select-none flex items-center gap-1 ${
