@@ -1,6 +1,6 @@
 # 🛰️ Nightgrid: Real-Time Fleet Geofencing & Alert System
 
-![Nightgrid Application Preview](docs/preview.png)
+
 
 > **High-Performance Distributed Geofencing & Vehicle Tracking Platform**  
 > Built with Go (Clean Architecture, Gin, WebSockets, Ray-Casting Spatial Engine) and React (Vite, TypeScript, Tailwind CSS, Leaflet).
